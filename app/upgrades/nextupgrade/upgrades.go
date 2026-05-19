@@ -48,7 +48,7 @@ func ReconstructTrancheKeys(ctx sdk.Context, cdc codec.Codec, k dexkeeper.Keeper
 		return fmt.Errorf("failed to reconstruct LO expirations: %w", err)
 	}
 
-	if err := reconstructLoTranches(ctx, cdc, k); err != nil {
+	if err := reconstructLoTranches(ctx, k); err != nil {
 		return fmt.Errorf("failed to reconstruct LO tranches: %w", err)
 	}
 
@@ -104,7 +104,7 @@ func reconstructLoExpirations(ctx sdk.Context, k dexkeeper.Keeper) error {
 	return nil
 }
 
-func reconstructLoTranches(ctx sdk.Context, cdc codec.Codec, k dexkeeper.Keeper) error {
+func reconstructLoTranches(ctx sdk.Context, k dexkeeper.Keeper) error {
 	tickLiquidities := k.GetAllTickLiquidity(ctx) // there are only 600-ish entries, so getting all is fine
 
 	loTrancheKeysToRemove := make([]dextypes.LimitOrderTrancheKey, 0)
@@ -160,13 +160,13 @@ func reconstructInactiveLoTranches(ctx sdk.Context, cdc codec.Codec, k dexkeeper
 		trancheIdxStr := strings.TrimPrefix(tranche.Key.TrancheKey, "tk-")
 		trancheIdx, err := strconv.ParseUint(trancheIdxStr, 10, 64)
 		if err != nil {
-			iter.Close() //nolint:errcheck
+			iter.Close() //nolint:errcheck,gosec
 			return fmt.Errorf("failed to parse tranche idx %s: %w", trancheIdxStr, err)
 		}
 		tranche.Key.TrancheKey = dextypes.NewTrancheKey(trancheIdx)
 		inactiveTranchesToUpdate = append(inactiveTranchesToUpdate, tranche)
 	}
-	iter.Close() //nolint:errcheck
+	iter.Close() //nolint:errcheck,gosec
 
 	if len(inactiveKeysToRemove) != len(inactiveTranchesToUpdate) {
 		return fmt.Errorf("mismatch in inactive LO tranches to remove and update counts: %d != %d", len(inactiveKeysToRemove), len(inactiveTranchesToUpdate))
