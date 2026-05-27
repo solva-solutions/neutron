@@ -1,43 +1,24 @@
-package nextupgrade_test
+package v9_test
 
 import (
 	"testing"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/neutron-org/neutron/v11/app/upgrades/nextupgrade"
 	"github.com/neutron-org/neutron/v11/testutil"
+	v9 "github.com/neutron-org/neutron/v11/x/dex/migrations/v9"
 	dextypes "github.com/neutron-org/neutron/v11/x/dex/types"
 )
 
-type UpgradeTestSuite struct {
+type V9DexMigrationTestSuite struct {
 	testutil.IBCConnectionTestSuite
 }
 
 func TestKeeperTestSuite(t *testing.T) {
-	suite.Run(t, new(UpgradeTestSuite))
-}
-
-func (suite *UpgradeTestSuite) SetupTest() {
-	suite.IBCConnectionTestSuite.SetupTest()
-}
-
-func (suite *UpgradeTestSuite) TestUpgrade() {
-	app := suite.GetNeutronZoneApp(suite.ChainA)
-	ctx := suite.ChainA.GetContext().WithChainID("neutron-1")
-	t := suite.T()
-
-	upgrade := upgradetypes.Plan{
-		Name:   nextupgrade.UpgradeName,
-		Info:   "some text here",
-		Height: 100,
-	}
-
-	require.NoError(t, app.UpgradeKeeper.ApplyUpgrade(ctx, upgrade))
+	suite.Run(t, new(V9DexMigrationTestSuite))
 }
 
 // TestReconstructLoExpirations verifies the LimitOrderExpiration migration.
@@ -48,7 +29,7 @@ func (suite *UpgradeTestSuite) TestUpgrade() {
 // expiration entry must be removed from its old store key and re-inserted under the new one.
 //
 // Entries pointing to a base-36 tranche key (no "tk-" prefix) must be left untouched.
-func (suite *UpgradeTestSuite) TestReconstructLoExpirations() {
+func (suite *V9DexMigrationTestSuite) TestReconstructLoExpirations() {
 	app := suite.GetNeutronZoneApp(suite.ChainA)
 	ctx := suite.ChainA.GetContext().WithChainID("neutron-1")
 	t := suite.T()
@@ -116,7 +97,7 @@ func (suite *UpgradeTestSuite) TestReconstructLoExpirations() {
 
 	// ── run migration ────────────────────────────────────────────────────────
 
-	require.NoError(t, nextupgrade.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
+	require.NoError(t, v9.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
 
 	// ── post-upgrade assertions ──────────────────────────────────────────────
 
@@ -158,7 +139,7 @@ func (suite *UpgradeTestSuite) TestReconstructLoExpirations() {
 //   - tk-19993998 / tk-19940606: old decimal keys that must be rewritten.
 //   - 57mgzl47if5: original base-36 sortable key (no "tk-" prefix) that must be left untouched.
 //   - pool_reserves: a tick-liquidity entry that is not a limit order; must be untouched.
-func (suite *UpgradeTestSuite) TestReconstructLoTrancheKeys() {
+func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheKeys() {
 	app := suite.GetNeutronZoneApp(suite.ChainA)
 	ctx := suite.ChainA.GetContext().WithChainID("neutron-1")
 	t := suite.T()
@@ -217,7 +198,7 @@ func (suite *UpgradeTestSuite) TestReconstructLoTrancheKeys() {
 
 	// ── run migration ────────────────────────────────────────────────────────
 
-	require.NoError(t, nextupgrade.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
+	require.NoError(t, v9.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
 
 	// ── post-upgrade assertions ──────────────────────────────────────────────
 
@@ -290,7 +271,7 @@ func (suite *UpgradeTestSuite) TestReconstructLoTrancheKeys() {
 // TestReconstructInactiveLoTranches verifies that inactive limit order tranches stored
 // under the old plain-decimal "tk-N" key format are rewritten to the zero-padded
 // "tk-%020d" format, while entries with the original base-36 sortable key are left alone.
-func (suite *UpgradeTestSuite) TestReconstructInactiveLoTranches() {
+func (suite *V9DexMigrationTestSuite) TestReconstructInactiveLoTranches() {
 	app := suite.GetNeutronZoneApp(suite.ChainA)
 	ctx := suite.ChainA.GetContext().WithChainID("neutron-1")
 	t := suite.T()
@@ -334,7 +315,7 @@ func (suite *UpgradeTestSuite) TestReconstructInactiveLoTranches() {
 
 	// ── run migration ────────────────────────────────────────────────────────
 
-	require.NoError(t, nextupgrade.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
+	require.NoError(t, v9.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
 
 	// ── post-upgrade assertions ──────────────────────────────────────────────
 
@@ -392,7 +373,7 @@ func (suite *UpgradeTestSuite) TestReconstructInactiveLoTranches() {
 // TestReconstructLoTrancheUserLists verifies that LimitOrderTrancheUser entries stored under
 // the old plain-decimal "tk-N" key are rewritten to the zero-padded "tk-%020d" format.
 // Entries with the original base-36 sortable key (no "tk-" prefix) must remain unchanged.
-func (suite *UpgradeTestSuite) TestReconstructLoTrancheUserLists() {
+func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheUserLists() {
 	app := suite.GetNeutronZoneApp(suite.ChainA)
 	ctx := suite.ChainA.GetContext().WithChainID("neutron-1")
 	t := suite.T()
@@ -442,7 +423,7 @@ func (suite *UpgradeTestSuite) TestReconstructLoTrancheUserLists() {
 
 	// ── run migration ────────────────────────────────────────────────────────
 
-	require.NoError(t, nextupgrade.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
+	require.NoError(t, v9.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
 
 	// ── post-upgrade assertions ──────────────────────────────────────────────
 

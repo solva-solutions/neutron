@@ -1,49 +1,46 @@
-package nextupgrade
+package v9
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
-	upgradetypes "cosmossdk.io/x/upgrade/types"
+	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/neutron-org/neutron/v11/app/upgrades"
-	dexkeeper "github.com/neutron-org/neutron/v11/x/dex/keeper"
 	dextypes "github.com/neutron-org/neutron/v11/x/dex/types"
 )
 
-func CreateUpgradeHandler(
-	mm *module.Manager,
-	configurator module.Configurator,
-	keepers *upgrades.UpgradeKeepers,
-	_ upgrades.StoreKeys,
-	cdc codec.Codec,
-) upgradetypes.UpgradeHandler {
-	return func(c context.Context, _ upgradetypes.Plan, vm module.VersionMap) (module.VersionMap, error) {
-		ctx := sdk.UnwrapSDKContext(c)
-
-		ctx.Logger().Info("Starting module migrations...")
-
-		vm, err := mm.RunMigrations(ctx, configurator, vm)
-		if err != nil {
-			return vm, err
-		}
-
-		ctx.Logger().Info("Reconstructing tranche keys...")
-		if err := ReconstructTrancheKeys(ctx, cdc, *keepers.DexKeeper); err != nil {
-			return vm, err
-		}
-		ctx.Logger().Info("Done")
-
-		ctx.Logger().Info(fmt.Sprintf("Migration {%s} applied", UpgradeName))
-		return vm, nil
-	}
+// dexKeeper defines an interface with dex keeper methods required for the migration. It is defined
+// to avoid import loop (x/dex/migrations <-> x/dex/keeper).
+type dexKeeper interface {
+	GetAllLimitOrderExpiration(ctx sdk.Context) (list []*dextypes.LimitOrderExpiration)
+	GetLimitOrderTrancheByKey(ctx sdk.Context, key []byte) (tranche *dextypes.LimitOrderTranche, found bool)
+	RemoveLimitOrderExpiration(ctx sdk.Context, goodTilDate time.Time, trancheRef []byte)
+	SetLimitOrderExpiration(ctx sdk.Context, goodTilRecord *dextypes.LimitOrderExpiration)
+	GetAllTickLiquidity(ctx sdk.Context) (list []*dextypes.TickLiquidity)
+	RemoveLimitOrderTranche(ctx sdk.Context, trancheKey *dextypes.LimitOrderTrancheKey)
+	SetLimitOrderTranche(ctx sdk.Context, tranche *dextypes.LimitOrderTranche)
+	GetInactiveLimitOrderTrancheIterator(ctx sdk.Context) storetypes.Iterator
+	RemoveInactiveLimitOrderTranche(ctx sdk.Context, limitOrderTrancheKey *dextypes.LimitOrderTrancheKey)
+	SetInactiveLimitOrderTranche(ctx sdk.Context, limitOrderTranche *dextypes.LimitOrderTranche)
+	GetAllLimitOrderTrancheUser(ctx sdk.Context) (list []*dextypes.LimitOrderTrancheUser)
+	RemoveLimitOrderTrancheUser(ctx sdk.Context, trancheUser *dextypes.LimitOrderTrancheUser)
+	SetLimitOrderTrancheUser(ctx sdk.Context, limitOrderTrancheUser *dextypes.LimitOrderTrancheUser)
 }
 
-func ReconstructTrancheKeys(ctx sdk.Context, cdc codec.Codec, k dexkeeper.Keeper) error {
+// MigrateStore performs in-place store migrations. It reconstructs the tranche keys for limit order
+// expirations, tranches, inactive tranches, and tranche user lists.
+func MigrateStore(ctx sdk.Context, cdc codec.BinaryCodec, dexKeeper dexKeeper) error {
+	if err := ReconstructTrancheKeys(ctx, cdc, dexKeeper); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ReconstructTrancheKeys(ctx sdk.Context, cdc codec.BinaryCodec, k dexKeeper) error {
 	if err := reconstructLoExpirations(ctx, k); err != nil {
 		return fmt.Errorf("failed to reconstruct LO expirations: %w", err)
 	}
@@ -63,7 +60,7 @@ func ReconstructTrancheKeys(ctx sdk.Context, cdc codec.Codec, k dexkeeper.Keeper
 	return nil
 }
 
-func reconstructLoExpirations(ctx sdk.Context, k dexkeeper.Keeper) error {
+func reconstructLoExpirations(ctx sdk.Context, k dexKeeper) error {
 	allExpirations := k.GetAllLimitOrderExpiration(ctx) // total count varies but is expected to be small or even 0
 
 	expirationsToRemove := make([]dextypes.LimitOrderExpiration, 0)
@@ -86,7 +83,7 @@ func reconstructLoExpirations(ctx sdk.Context, k dexkeeper.Keeper) error {
 			return fmt.Errorf("failed to parse tranche idx %s: %w", trancheIdxStr, err)
 		}
 		tranche.Key.TrancheKey = dextypes.NewTrancheKey(trancheIdx)
-		expirationsToUpdate = append(expirationsToUpdate, *dexkeeper.NewLimitOrderExpiration(tranche))
+		expirationsToUpdate = append(expirationsToUpdate, *dextypes.NewLimitOrderExpiration(tranche))
 	}
 
 	if len(expirationsToRemove) != len(expirationsToUpdate) {
@@ -104,7 +101,7 @@ func reconstructLoExpirations(ctx sdk.Context, k dexkeeper.Keeper) error {
 	return nil
 }
 
-func reconstructLoTranches(ctx sdk.Context, k dexkeeper.Keeper) error {
+func reconstructLoTranches(ctx sdk.Context, k dexKeeper) error {
 	tickLiquidities := k.GetAllTickLiquidity(ctx) // there are only 600-ish entries, so getting all is fine
 
 	loTrancheKeysToRemove := make([]dextypes.LimitOrderTrancheKey, 0)
@@ -142,7 +139,7 @@ func reconstructLoTranches(ctx sdk.Context, k dexkeeper.Keeper) error {
 	return nil
 }
 
-func reconstructInactiveLoTranches(ctx sdk.Context, cdc codec.Codec, k dexkeeper.Keeper) error {
+func reconstructInactiveLoTranches(ctx sdk.Context, cdc codec.BinaryCodec, k dexKeeper) error {
 	iter := k.GetInactiveLimitOrderTrancheIterator(ctx) // there are more than 400k entries -> iterating
 
 	inactiveKeysToRemove := make([]dextypes.LimitOrderTrancheKey, 0)
@@ -183,7 +180,7 @@ func reconstructInactiveLoTranches(ctx sdk.Context, cdc codec.Codec, k dexkeeper
 	return nil
 }
 
-func reconstructLoTrancheUserLists(ctx sdk.Context, k dexkeeper.Keeper) error {
+func reconstructLoTrancheUserLists(ctx sdk.Context, k dexKeeper) error {
 	allUsers := k.GetAllLimitOrderTrancheUser(ctx) // there are only 300-ish entries, so getting all is fine
 
 	usersToRemove := make([]dextypes.LimitOrderTrancheUser, 0)
