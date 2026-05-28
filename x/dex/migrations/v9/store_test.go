@@ -11,7 +11,6 @@ import (
 	"github.com/neutron-org/neutron/v11/testutil"
 	v9 "github.com/neutron-org/neutron/v11/x/dex/migrations/v9"
 	dextypes "github.com/neutron-org/neutron/v11/x/dex/types"
-	"github.com/neutron-org/neutron/v11/x/dex/utils"
 )
 
 type V9DexMigrationTestSuite struct {
@@ -26,8 +25,8 @@ func TestKeeperTestSuite(t *testing.T) {
 //
 // A LimitOrderExpiration stores a TrancheRef = tranche.Key.KeyMarshal(), which embeds the
 // TrancheKey string as part of its bytes. When a tranche key is rewritten from the old
-// plain-decimal "tk-N" format to the base-36 sortable string format, the corresponding
-// expiration entry must be removed from its old store key and re-inserted under the new one.
+// plain-decimal "tk-N" format to the "tk-Uint64ToSortableString(N)" string format, the corresponding expiration
+// entry must be removed from its old store key and re-inserted under the new one.
 //
 // Entries pointing to obsolete base-36 tranche keys built out of height and gas and no "tk-" prefix
 // must be left untouched.
@@ -42,7 +41,7 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoExpirations() {
 
 	// ── pre-upgrade state ────────────────────────────────────────────────────
 
-	// Two active limit-order tranches with old plain-decimal keys and different ExpirationTime.
+	// Two active limit-order tranches with old "tk-N" keys and different ExpirationTime.
 	pairID1 := dextypes.MustNewTradePairID(
 		"ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81",
 		"factory/neutron1frc0p5czd9uaaymdkug2njz7dc7j65jxukp9apmt9260a8egujkspms2t2/udntrn",
@@ -105,27 +104,27 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoExpirations() {
 
 	require.Len(t, app.DexKeeper.GetAllLimitOrderExpiration(ctx), 3, "post-upgrade: expiration count must not change")
 
-	// --- tk-19993998 expiration → new TrancheRef under Uint64ToSortableString(19993998) ---
+	// --- tk-19993998 expiration → new TrancheRef under "tk-Uint64ToSortableString(19993998)" string format ---
 
 	newKey1 := &dextypes.LimitOrderTrancheKey{
 		TradePairId:           pairID1,
-		TrancheKey:            utils.Uint64ToSortableString(19993998),
+		TrancheKey:            dextypes.NewTrancheKey(19993998),
 		TickIndexTakerToMaker: -43028,
 	}
 	_, found := app.DexKeeper.GetLimitOrderExpiration(ctx, expTime1, newKey1.KeyMarshal())
-	require.True(t, found, "new expiration (Uint64ToSortableString(19993998)) must exist")
+	require.True(t, found, "new expiration (tk-Uint64ToSortableString(19993998)) must exist")
 	_, found = app.DexKeeper.GetLimitOrderExpiration(ctx, expTime1, oldKey1.KeyMarshal())
 	require.False(t, found, "old expiration (tk-19993998) must be removed")
 
-	// --- tk-19940606 expiration → new TrancheRef under Uint64ToSortableString(19940606) ---
+	// --- tk-19940606 expiration → new TrancheRef under "tk-Uint64ToSortableString(19940606)" string format ---
 
 	newKey2 := &dextypes.LimitOrderTrancheKey{
 		TradePairId:           pairID1,
-		TrancheKey:            utils.Uint64ToSortableString(19940606),
+		TrancheKey:            dextypes.NewTrancheKey(19940606),
 		TickIndexTakerToMaker: -42321,
 	}
 	_, found = app.DexKeeper.GetLimitOrderExpiration(ctx, expTime2, newKey2.KeyMarshal())
-	require.True(t, found, "new expiration (Uint64ToSortableString(19940606)) must exist")
+	require.True(t, found, "new expiration (tk-Uint64ToSortableString(19940606)) must exist")
 	_, found = app.DexKeeper.GetLimitOrderExpiration(ctx, expTime2, oldKey2.KeyMarshal())
 	require.False(t, found, "old expiration (tk-19940606) must be removed")
 
@@ -136,9 +135,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoExpirations() {
 }
 
 // TestReconstructLoTrancheKeys verifies the tranche key migration from the plain-decimal
-// "tk-N" format to the base-36 sortable string format. It uses realistic mainnet entries:
+// "tk-N" format to the "tk-Uint64ToSortableString(N)" string format. It uses realistic mainnet entries:
 //
-//   - tk-19993998 / tk-19940606: old decimal keys that must be rewritten.
+//   - tk-19993998 / tk-19940606: old "tk-N" keys that must be rewritten.
 //   - 57mgzl47if5: obsolete base-36 key built out of height and gas and no "tk-" prefix that
 //     must be left untouched.
 //   - pool_reserves: a tick-liquidity entry that is not a limit order; must be untouched.
@@ -149,7 +148,7 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheKeys() {
 
 	// ── pre-upgrade state ────────────────────────────────────────────────────
 
-	// Two active limit-order tranches with old plain-decimal keys.
+	// Two active limit-order tranches with old "tk-N" keys.
 	pairID1 := dextypes.MustNewTradePairID(
 		"ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81",
 		"factory/neutron1frc0p5czd9uaaymdkug2njz7dc7j65jxukp9apmt9260a8egujkspms2t2/udntrn",
@@ -208,9 +207,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheKeys() {
 	// Total entry count must be unchanged.
 	require.Len(t, app.DexKeeper.GetAllTickLiquidity(ctx), 4, "post-upgrade: entry count must not change")
 
-	// --- tk-19993998 → Uint64ToSortableString(19993998) ---
+	// --- tk-19993998 → "tk-Uint64ToSortableString(19993998)" string format ---
 
-	migratedKey1 := utils.Uint64ToSortableString(19993998)
+	migratedKey1 := dextypes.NewTrancheKey(19993998)
 
 	migratedTranche1 := app.DexKeeper.GetLimitOrderTranche(ctx, &dextypes.LimitOrderTrancheKey{
 		TradePairId:           pairID1,
@@ -229,9 +228,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheKeys() {
 		"old key tk-19993998 must no longer exist",
 	)
 
-	// --- tk-19940606 → Uint64ToSortableString(19940606) ---
+	// --- tk-19940606 → "tk-Uint64ToSortableString(19940606)" string format ---
 
-	migratedKey2 := utils.Uint64ToSortableString(19940606)
+	migratedKey2 := dextypes.NewTrancheKey(19940606)
 
 	migratedTranche2 := app.DexKeeper.GetLimitOrderTranche(ctx, &dextypes.LimitOrderTrancheKey{
 		TradePairId:           pairID1,
@@ -271,9 +270,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheKeys() {
 	require.NotNil(t, poolReserves)
 }
 
-// TestReconstructInactiveLoTranches verifies that inactive limit order tranches stored
-// under the old plain-decimal "tk-N" key are rewritten to the base-36 sortable string format,
-// while entries with the obsolete base-36 sortable key are left alone.
+// TestReconstructInactiveLoTranches verifies that inactive limit order tranches stored under
+// the old "tk-N" key are rewritten to the "tk-Uint64ToSortableString(N)" string format, while entries with
+// the obsolete base-36 key are left alone.
 func (suite *V9DexMigrationTestSuite) TestReconstructInactiveLoTranches() {
 	app := suite.GetNeutronZoneApp(suite.ChainA)
 	ctx := suite.ChainA.GetContext().WithChainID("neutron-1")
@@ -324,9 +323,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructInactiveLoTranches() {
 
 	require.Len(t, app.DexKeeper.GetAllInactiveLimitOrderTranche(ctx), 3, "post-upgrade: entry count must not change")
 
-	// --- tk-18498162 → Uint64ToSortableString(18498162) ---
+	// --- tk-18498162 → "tk-Uint64ToSortableString(18498162)" string format ---
 
-	migratedKey1 := utils.Uint64ToSortableString(18498162)
+	migratedKey1 := dextypes.NewTrancheKey(18498162)
 
 	migratedTranche1, found := app.DexKeeper.GetInactiveLimitOrderTranche(ctx, &dextypes.LimitOrderTrancheKey{
 		TradePairId:           pairID2,
@@ -343,9 +342,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructInactiveLoTranches() {
 	})
 	require.False(t, found, "old key tk-18498162 must no longer exist")
 
-	// --- tk-18291522 → Uint64ToSortableString(18291522) ---
+	// --- tk-18291522 → "tk-Uint64ToSortableString(18291522)" string format ---
 
-	migratedKey2 := utils.Uint64ToSortableString(18291522)
+	migratedKey2 := dextypes.NewTrancheKey(18291522)
 
 	migratedTranche2, found := app.DexKeeper.GetInactiveLimitOrderTranche(ctx, &dextypes.LimitOrderTrancheKey{
 		TradePairId:           pairID2,
@@ -374,8 +373,8 @@ func (suite *V9DexMigrationTestSuite) TestReconstructInactiveLoTranches() {
 }
 
 // TestReconstructLoTrancheUserLists verifies that LimitOrderTrancheUser entries stored under
-// the old plain-decimal "tk-N" key are rewritten to the base-36 sortable string format.
-// Entries with the obsolete base-36 sortable key built out of height and gas and no "tk-" prefix
+// the old "tk-N" key are rewritten to the "tk-Uint64ToSortableString(N)" string format.
+// Entries with the obsolete base-36 key built out of height and gas and no "tk-" prefix
 // must remain unchanged.
 func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheUserLists() {
 	app := suite.GetNeutronZoneApp(suite.ChainA)
@@ -403,7 +402,7 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheUserLists() {
 		"ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81",
 		"factory/neutron1r5qx58l3xx2y8gzjtkqjndjgx69mktmapl45vns0pa73z0zpn7fqgltnll/TAB",
 	)
-	// old plain-decimal key — must be migrated
+	// old "tk-N" key — must be migrated
 	app.DexKeeper.SetLimitOrderTrancheUser(ctx, &dextypes.LimitOrderTrancheUser{
 		TradePairId:           pairID2,
 		TickIndexTakerToMaker: -12041,
@@ -433,9 +432,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheUserLists() {
 
 	require.Len(t, app.DexKeeper.GetAllLimitOrderTrancheUser(ctx), 3, "post-upgrade: entry count must not change")
 
-	// --- tk-3819855 → Uint64ToSortableString(3819855) ---
+	// --- tk-3819855 → "tk-Uint64ToSortableString(3819855)" string format ---
 
-	migratedKey1 := utils.Uint64ToSortableString(3819855)
+	migratedKey1 := dextypes.NewTrancheKey(3819855)
 
 	migratedUser1, found := app.DexKeeper.GetLimitOrderTrancheUser(
 		ctx,
@@ -452,9 +451,9 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheUserLists() {
 	)
 	require.False(t, found, "old key tk-3819855 must no longer exist")
 
-	// --- tk-4079303 → Uint64ToSortableString(4079303) ---
+	// --- tk-4079303 → "tk-Uint64ToSortableString(4079303)" string format ---
 
-	migratedKey2 := utils.Uint64ToSortableString(4079303)
+	migratedKey2 := dextypes.NewTrancheKey(4079303)
 
 	migratedUser2, found := app.DexKeeper.GetLimitOrderTrancheUser(
 		ctx,
