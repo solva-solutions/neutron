@@ -33,29 +33,41 @@ type dexKeeper interface {
 // MigrateStore performs in-place store migrations. It reconstructs the tranche keys for limit order
 // expirations, tranches, inactive tranches, and tranche user lists.
 func MigrateStore(ctx sdk.Context, cdc codec.BinaryCodec, dexKeeper dexKeeper) error {
+	ctx.Logger().Info("Starting dex store migration...")
+
+	ctx.Logger().Info("Reconstructing tranche keys...")
 	if err := ReconstructTrancheKeys(ctx, cdc, dexKeeper); err != nil {
 		return err
 	}
 
+	ctx.Logger().Info("Dex store migration completed")
 	return nil
 }
 
 func ReconstructTrancheKeys(ctx sdk.Context, cdc codec.BinaryCodec, k dexKeeper) error {
+	ctx.Logger().Info("Reconstructing LO expirations...")
 	if err := reconstructLoExpirations(ctx, k); err != nil {
 		return fmt.Errorf("failed to reconstruct LO expirations: %w", err)
 	}
+	ctx.Logger().Info("Done")
 
+	ctx.Logger().Info("Reconstructing LO tranches...")
 	if err := reconstructLoTranches(ctx, k); err != nil {
 		return fmt.Errorf("failed to reconstruct LO tranches: %w", err)
 	}
+	ctx.Logger().Info("Done")
 
+	ctx.Logger().Info("Reconstructing inactive LO tranches...")
 	if err := reconstructInactiveLoTranches(ctx, cdc, k); err != nil {
 		return fmt.Errorf("failed to reconstruct inactive LO tranches: %w", err)
 	}
+	ctx.Logger().Info("Done")
 
+	ctx.Logger().Info("Reconstructing LO tranche user lists...")
 	if err := reconstructLoTrancheUserLists(ctx, k); err != nil {
 		return fmt.Errorf("failed to reconstruct LO tranche user lists: %w", err)
 	}
+	ctx.Logger().Info("Done")
 
 	return nil
 }
