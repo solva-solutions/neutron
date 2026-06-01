@@ -5,10 +5,12 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/neutron-org/neutron/v11/testutil"
+	"github.com/neutron-org/neutron/v11/x/dex/keeper"
 	v9 "github.com/neutron-org/neutron/v11/x/dex/migrations/v9"
 	dextypes "github.com/neutron-org/neutron/v11/x/dex/types"
 )
@@ -479,4 +481,106 @@ func (suite *V9DexMigrationTestSuite) TestReconstructLoTrancheUserLists() {
 	)
 	require.True(t, found, "obsolete base-36 tranche user must still exist")
 	require.Equal(t, "5atwxq41kck", untouched.TrancheKey, "obsolete base-36 key must not be rewritten")
+}
+
+// TestProperOrderingAfterReconstruction demonstrates the plain-decimal "tk-N" lexicographic sorting
+// bug and verifies that ReconstructTrancheKeys fixes ordering via tk-Uint64ToSortableString(N).
+func (suite *V9DexMigrationTestSuite) TestProperOrderingAfterReconstruction() {
+	app := suite.GetNeutronZoneApp(suite.ChainA)
+	ctx := suite.ChainA.GetContext().WithChainID("neutron-1")
+	t := suite.T()
+
+	pairID := dextypes.MustNewTradePairID(
+		"ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81",
+		"factory/neutron1frc0p5czd9uaaymdkug2njz7dc7j65jxukp9apmt9260a8egujkspms2t2/udntrn",
+	)
+	const tickIndex int64 = -43028
+
+	// insert both kind of keys (tk-N and obsolete base-36 build of height and gas) in mixed order
+	insertOrder := []string{
+		"tk-11",
+		"57mgzl47if5",
+		"tk-2",
+		"5f2w8k1m9q3",
+		"tk-10",
+		"57m0a14awvr",
+		"tk-9",
+		"5atwxq41kck",
+		"tk-1",
+		"57n5z9l5d18",
+	}
+	for _, trancheKey := range insertOrder {
+		app.DexKeeper.SetLimitOrderTranche(ctx, dextypes.MustNewLimitOrderTranche(
+			pairID.MakerDenom,
+			pairID.TakerDenom,
+			trancheKey,
+			tickIndex,
+			sdkmath.NewInt(1),
+			sdkmath.ZeroInt(),
+			sdkmath.NewInt(1),
+			sdkmath.ZeroInt(),
+		))
+	}
+	require.Len(t, app.DexKeeper.GetAllTickLiquidity(ctx), len(insertOrder))
+
+	// ── pre-migration: sorting bug for plain decimal "tk-N" keys ─────────────────
+
+	preMigrationExpected := []string{
+		"57m0a14awvr",
+		"57mgzl47if5",
+		"57n5z9l5d18",
+		"5atwxq41kck",
+		"5f2w8k1m9q3",
+		"tk-1",
+		"tk-10", // the bug is that this
+		"tk-11", // and this
+		"tk-2",  // come before this
+		"tk-9",  // and this
+	}
+	preMigrationIterated := collectTrancheKeysViaIterator(&app.DexKeeper, ctx, pairID)
+	require.Equal(t, preMigrationExpected, preMigrationIterated,
+		"pre-migration iterator should follow raw lexicographic key order")
+
+	// ── run migration ─────────────────────────────────────────────────────────
+
+	require.NoError(t, v9.ReconstructTrancheKeys(ctx, app.AppCodec(), app.DexKeeper))
+
+	postMigrationExpected := []string{
+		"57m0a14awvr",
+		"57mgzl47if5",
+		"57n5z9l5d18",
+		"5atwxq41kck",
+		"5f2w8k1m9q3",
+		dextypes.NewTrancheKey(1),
+		dextypes.NewTrancheKey(2),
+		dextypes.NewTrancheKey(9),
+		dextypes.NewTrancheKey(10),
+		dextypes.NewTrancheKey(11),
+	}
+	postMigrationIterated := collectTrancheKeysViaIterator(&app.DexKeeper, ctx, pairID)
+	require.Equal(t, postMigrationExpected, postMigrationIterated,
+		"post-migration iterator must follow corrected lexicographic key order")
+}
+
+func collectTrancheKeysViaIterator(
+	k *keeper.Keeper,
+	ctx sdk.Context,
+	tradePairID *dextypes.TradePairID,
+) []string {
+	liqIter := k.NewLiquidityIterator(ctx, tradePairID)
+	defer liqIter.Close()
+
+	var keys []string
+	for {
+		liq := liqIter.Next()
+		if liq == nil {
+			break
+		}
+		tranche, ok := liq.(*dextypes.LimitOrderTranche)
+		if !ok {
+			continue
+		}
+		keys = append(keys, tranche.Key.TrancheKey)
+	}
+	return keys
 }
