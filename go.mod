@@ -248,6 +248,6 @@ replace (
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 	github.com/skip-mev/feemarket => github.com/neutron-org/feemarket v1.2.0
-	github.com/skip-mev/slinky => github.com/neutron-org/connect v1.3.1
+	github.com/skip-mev/slinky => ../connect-neutron
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )

@@ -228,8 +228,9 @@ import (
 )
 
 const (
-	Name               = "neutrond"
-	VoteExtensionLimit = 100 * 1024
+	Name                = "neutrond"
+	VoteExtensionLimit  = 100 * 1024
+	ExtendedCommitLimit = 100 * 1024
 )
 
 var (
@@ -1176,7 +1177,7 @@ func New(
 		),
 		compression.NewCompressionExtendedCommitCodec(
 			compression.NewDefaultExtendedCommitCodec(),
-			compression.NewZStdCompressor(),
+			compression.NewZStdCompressorWithLimit(ExtendedCommitLimit),
 		),
 		currencypair.NewDeltaCurrencyPairStrategy(app.OracleKeeper),
 		oracleMetrics,
@@ -1217,7 +1218,7 @@ func New(
 		),
 		compression.NewCompressionExtendedCommitCodec(
 			compression.NewDefaultExtendedCommitCodec(),
-			compression.NewZStdCompressor(),
+			compression.NewZStdCompressorWithLimit(ExtendedCommitLimit),
 		),
 	)
 	app.SetPreBlocker(oraclePreBlockHandler.WrappedPreBlocker(app.mm))
@@ -1230,7 +1231,7 @@ func New(
 	)
 	extCommitCodec := compression.NewCompressionExtendedCommitCodec(
 		compression.NewDefaultExtendedCommitCodec(),
-		compression.NewZStdCompressor(),
+		compression.NewZStdCompressorWithLimit(ExtendedCommitLimit),
 	)
 
 	voteAggregator := aggregator.NewDefaultVoteAggregator(
