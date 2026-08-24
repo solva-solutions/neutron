@@ -22,9 +22,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 
-	"github.com/neutron-org/neutron/v11/x/globalfee/client/cli"
-	"github.com/neutron-org/neutron/v11/x/globalfee/keeper"
-	"github.com/neutron-org/neutron/v11/x/globalfee/types"
+	"github.com/solva-solutions/neutron/v11/x/globalfee/client/cli"
+	"github.com/solva-solutions/neutron/v11/x/globalfee/keeper"
+	"github.com/solva-solutions/neutron/v11/x/globalfee/types"
 )
 
 var (

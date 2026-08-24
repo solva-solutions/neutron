@@ -3,11 +3,11 @@ package types_test
 import (
 	"testing"
 
-	"github.com/neutron-org/neutron/v11/app/config"
+	"github.com/solva-solutions/neutron/v11/app/config"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/x/tokenfactory/types"
+	"github.com/solva-solutions/neutron/v11/x/tokenfactory/types"
 )
 
 func TestGenesisState_Validate(t *testing.T) {

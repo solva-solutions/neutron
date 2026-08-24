@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/neutron-org/neutron/v11/testutil"
-	v2 "github.com/neutron-org/neutron/v11/x/feerefunder/migrations/v2"
-	"github.com/neutron-org/neutron/v11/x/feerefunder/types"
+	"github.com/solva-solutions/neutron/v11/testutil"
+	v2 "github.com/solva-solutions/neutron/v11/x/feerefunder/migrations/v2"
+	"github.com/solva-solutions/neutron/v11/x/feerefunder/types"
 )
 
 type V2FeerefunderTestSuite struct {

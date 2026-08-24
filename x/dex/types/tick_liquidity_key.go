@@ -1,6 +1,6 @@
 package types
 
-import math_utils "github.com/neutron-org/neutron/v11/utils/math"
+import math_utils "github.com/solva-solutions/neutron/v11/utils/math"
 
 type TickLiquidityKey interface {
 	KeyMarshal() []byte

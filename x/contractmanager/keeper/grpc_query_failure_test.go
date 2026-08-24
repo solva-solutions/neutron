@@ -4,16 +4,16 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/neutron-org/neutron/v11/testutil/common/nullify"
+	"github.com/solva-solutions/neutron/v11/testutil/common/nullify"
 
 	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	keepertest "github.com/neutron-org/neutron/v11/testutil/contractmanager/keeper"
-	"github.com/neutron-org/neutron/v11/x/contractmanager/keeper"
-	"github.com/neutron-org/neutron/v11/x/contractmanager/types"
+	keepertest "github.com/solva-solutions/neutron/v11/testutil/contractmanager/keeper"
+	"github.com/solva-solutions/neutron/v11/x/contractmanager/keeper"
+	"github.com/solva-solutions/neutron/v11/x/contractmanager/types"
 )
 
 // Prevent strconv unused error

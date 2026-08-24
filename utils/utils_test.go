@@ -6,7 +6,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/utils"
+	"github.com/solva-solutions/neutron/v11/utils"
 )
 
 func TestSanitizeCoins(t *testing.T) {

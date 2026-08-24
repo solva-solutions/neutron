@@ -6,7 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 
-	"github.com/neutron-org/neutron/v11/x/interchaintxs/types"
+	"github.com/solva-solutions/neutron/v11/x/interchaintxs/types"
 )
 
 // GetTxCmd returns the transaction commands for this module

@@ -12,8 +12,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/x/contractmanager"
-	"github.com/neutron-org/neutron/v11/x/contractmanager/types"
+	"github.com/solva-solutions/neutron/v11/x/contractmanager"
+	"github.com/solva-solutions/neutron/v11/x/contractmanager/types"
 )
 
 func NewSudoLimitWrapper(t testing.TB, cmKeeper types.ContractManagerKeeper, wasmKeeper types.WasmKeeper) (types.WasmKeeper, sdk.Context, *storetypes.KVStoreKey) {

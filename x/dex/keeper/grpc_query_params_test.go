@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	testkeeper "github.com/neutron-org/neutron/v11/testutil/dex/keeper"
-	"github.com/neutron-org/neutron/v11/x/dex/types"
+	testkeeper "github.com/solva-solutions/neutron/v11/testutil/dex/keeper"
+	"github.com/solva-solutions/neutron/v11/x/dex/types"
 )
 
 func TestParamsQuery(t *testing.T) {

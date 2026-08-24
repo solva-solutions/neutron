@@ -8,7 +8,7 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 
-	appparams "github.com/neutron-org/neutron/v11/app/params"
+	appparams "github.com/solva-solutions/neutron/v11/app/params"
 )
 
 var testDelegator = sdk.AccAddress(make([]byte, 20)).String()

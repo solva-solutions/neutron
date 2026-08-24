@@ -1,4 +1,4 @@
-module github.com/neutron-org/neutron/v11
+module github.com/solva-solutions/neutron/v11
 
 go 1.24.10
 
@@ -240,14 +240,14 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/CosmWasm/wasmd => github.com/neutron-org/wasmd v0.61.14-neutron
+	github.com/CosmWasm/wasmd => github.com/solva-solutions/neutron-wasmd v0.61.14-neutron
 	github.com/btcsuite/btcd/btcec/v2 => github.com/btcsuite/btcd/btcec/v2 v2.3.2
-	github.com/cosmos/cosmos-sdk => github.com/neutron-org/cosmos-sdk v0.53.4-neutron
+	github.com/cosmos/cosmos-sdk => github.com/solva-solutions/neutron-cosmos-sdk v0.53.4-neutron
 	// explicitely replace iavl to v1.2.0 cause sometimes go mod tidy uses not right version
 	github.com/cosmos/iavl => github.com/cosmos/iavl v1.2.0
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
-	github.com/skip-mev/feemarket => github.com/neutron-org/feemarket v1.2.0
-	github.com/skip-mev/slinky => ../connect-neutron
+	github.com/skip-mev/feemarket => github.com/solva-solutions/neutron-feemarket v1.2.0
+	github.com/skip-mev/slinky => github.com/solva-solutions/neutron-connect v1.3.2
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )

@@ -4,7 +4,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/neutron-org/neutron/v11/x/coinfactory/types"
+	"github.com/solva-solutions/neutron/v11/x/coinfactory/types"
 )
 
 // GetAuthorityMetadata returns the authority metadata for a specific denom

@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/testutil"
-	testkeeper "github.com/neutron-org/neutron/v11/testutil/cron/keeper"
-	cronkeeper "github.com/neutron-org/neutron/v11/x/cron/keeper"
-	"github.com/neutron-org/neutron/v11/x/cron/types"
+	"github.com/solva-solutions/neutron/v11/testutil"
+	testkeeper "github.com/solva-solutions/neutron/v11/testutil/cron/keeper"
+	cronkeeper "github.com/solva-solutions/neutron/v11/x/cron/keeper"
+	"github.com/solva-solutions/neutron/v11/x/cron/types"
 )
 
 func TestMsgAddScheduleValidate(t *testing.T) {

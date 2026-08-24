@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/app/config"
+	"github.com/solva-solutions/neutron/v11/app/config"
 
-	"github.com/neutron-org/neutron/v11/x/coinfactory/types"
+	"github.com/solva-solutions/neutron/v11/x/coinfactory/types"
 )
 
 func TestGenesisState_Validate(t *testing.T) {

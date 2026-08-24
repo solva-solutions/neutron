@@ -6,7 +6,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/neutron-org/neutron/v11/x/tokenfactory/types"
+	"github.com/solva-solutions/neutron/v11/x/tokenfactory/types"
 )
 
 var _ types.QueryServer = Keeper{}

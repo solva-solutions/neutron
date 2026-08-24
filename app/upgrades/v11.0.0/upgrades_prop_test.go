@@ -11,7 +11,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	appparams "github.com/neutron-org/neutron/v11/app/params"
+	appparams "github.com/solva-solutions/neutron/v11/app/params"
 )
 
 // This file contains property-based tests for calcRedelegations.

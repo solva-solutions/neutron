@@ -7,8 +7,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
 
-	"github.com/neutron-org/neutron/v11/x/dex/keeper"
-	"github.com/neutron-org/neutron/v11/x/dex/types"
+	"github.com/solva-solutions/neutron/v11/x/dex/keeper"
+	"github.com/solva-solutions/neutron/v11/x/dex/types"
 )
 
 func SimulateMsgDeposit(

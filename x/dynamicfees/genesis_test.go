@@ -6,15 +6,15 @@ import (
 	"cosmossdk.io/math"
 	cosmostypes "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/neutron-org/neutron/v11/x/dynamicfees"
+	"github.com/solva-solutions/neutron/v11/x/dynamicfees"
 
-	"github.com/neutron-org/neutron/v11/app/config"
+	"github.com/solva-solutions/neutron/v11/app/config"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/testutil/common/nullify"
-	"github.com/neutron-org/neutron/v11/testutil/dynamicfees/keeper"
-	"github.com/neutron-org/neutron/v11/x/dynamicfees/types"
+	"github.com/solva-solutions/neutron/v11/testutil/common/nullify"
+	"github.com/solva-solutions/neutron/v11/testutil/dynamicfees/keeper"
+	"github.com/solva-solutions/neutron/v11/x/dynamicfees/types"
 )
 
 func TestGenesis(t *testing.T) {

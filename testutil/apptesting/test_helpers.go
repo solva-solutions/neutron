@@ -9,7 +9,7 @@ import (
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/testutil/network"
 
-	"github.com/neutron-org/neutron/v11/app"
+	"github.com/solva-solutions/neutron/v11/app"
 )
 
 // NewAppConstructor returns a new Neutron app given encoding type configs.

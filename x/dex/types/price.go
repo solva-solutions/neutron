@@ -6,8 +6,8 @@ import (
 	"encoding/gob"
 	fmt "fmt"
 
-	math_utils "github.com/neutron-org/neutron/v11/utils/math"
-	"github.com/neutron-org/neutron/v11/x/dex/utils"
+	math_utils "github.com/solva-solutions/neutron/v11/utils/math"
+	"github.com/solva-solutions/neutron/v11/x/dex/utils"
 )
 
 const (

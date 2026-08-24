@@ -17,8 +17,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/x/dynamicfees/keeper"
-	"github.com/neutron-org/neutron/v11/x/dynamicfees/types"
+	"github.com/solva-solutions/neutron/v11/x/dynamicfees/keeper"
+	"github.com/solva-solutions/neutron/v11/x/dynamicfees/types"
 )
 
 func DynamicFeesKeeper(t testing.TB) (*keeper.Keeper, sdk.Context) {

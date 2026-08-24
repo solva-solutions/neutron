@@ -12,7 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/neutron-org/neutron/v11/x/interchaintxs/types"
+	"github.com/solva-solutions/neutron/v11/x/interchaintxs/types"
 )
 
 const (

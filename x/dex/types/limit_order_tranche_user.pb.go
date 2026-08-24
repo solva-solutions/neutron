@@ -8,7 +8,7 @@ import (
 	fmt "fmt"
 	_ "github.com/cosmos/gogoproto/gogoproto"
 	proto "github.com/cosmos/gogoproto/proto"
-	github_com_neutron_org_neutron_v11_utils_math "github.com/neutron-org/neutron/v11/utils/math"
+	github_com_neutron_org_neutron_v11_utils_math "github.com/solva-solutions/neutron/v11/utils/math"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -36,7 +36,7 @@ type LimitOrderTrancheUser struct {
 	// TODO: remove this in next release. It is no longer used
 	SharesCancelled    cosmossdk_io_math.Int                                 `protobuf:"bytes,7,opt,name=shares_cancelled,json=sharesCancelled,proto3,customtype=cosmossdk.io/math.Int" json:"shares_cancelled" yaml:"shares_cancelled"`
 	OrderType          LimitOrderType                                        `protobuf:"varint,8,opt,name=order_type,json=orderType,proto3,enum=neutron.dex.LimitOrderType" json:"order_type,omitempty"`
-	DecSharesWithdrawn github_com_neutron_org_neutron_v11_utils_math.PrecDec `protobuf:"bytes,9,opt,name=dec_shares_withdrawn,json=decSharesWithdrawn,proto3,customtype=github.com/neutron-org/neutron/v11/utils/math.PrecDec" json:"dec_shares_withdrawn" yaml:"dec_shares_withdrawn"`
+	DecSharesWithdrawn github_com_neutron_org_neutron_v11_utils_math.PrecDec `protobuf:"bytes,9,opt,name=dec_shares_withdrawn,json=decSharesWithdrawn,proto3,customtype=github.com/solva-solutions/neutron/v11/utils/math.PrecDec" json:"dec_shares_withdrawn" yaml:"dec_shares_withdrawn"`
 }
 
 func (m *LimitOrderTrancheUser) Reset()         { *m = LimitOrderTrancheUser{} }

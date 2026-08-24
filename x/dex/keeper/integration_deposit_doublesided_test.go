@@ -3,7 +3,7 @@ package keeper_test
 import (
 	"cosmossdk.io/math"
 
-	"github.com/neutron-org/neutron/v11/x/dex/types"
+	"github.com/solva-solutions/neutron/v11/x/dex/types"
 )
 
 func (s *DexTestSuite) TestDepositDoubleSidedInSpreadCurrTickAdjusted() {

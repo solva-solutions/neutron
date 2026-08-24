@@ -18,17 +18,17 @@ import (
 	marketmaptypes "github.com/skip-mev/slinky/x/marketmap/types"
 	oracletypes "github.com/skip-mev/slinky/x/oracle/types"
 
-	coinfactorytypes "github.com/neutron-org/neutron/v11/x/coinfactory/types"
-	crontypes "github.com/neutron-org/neutron/v11/x/cron/types"
-	dextypes "github.com/neutron-org/neutron/v11/x/dex/types"
-	interchainqueriestypes "github.com/neutron-org/neutron/v11/x/interchainqueries/types"
-	interchaintxstypes "github.com/neutron-org/neutron/v11/x/interchaintxs/types"
-	stateverifiertypes "github.com/neutron-org/neutron/v11/x/state-verifier/types"
-	tokenfactorytypes "github.com/neutron-org/neutron/v11/x/tokenfactory/types"
+	coinfactorytypes "github.com/solva-solutions/neutron/v11/x/coinfactory/types"
+	crontypes "github.com/solva-solutions/neutron/v11/x/cron/types"
+	dextypes "github.com/solva-solutions/neutron/v11/x/dex/types"
+	interchainqueriestypes "github.com/solva-solutions/neutron/v11/x/interchainqueries/types"
+	interchaintxstypes "github.com/solva-solutions/neutron/v11/x/interchaintxs/types"
+	stateverifiertypes "github.com/solva-solutions/neutron/v11/x/state-verifier/types"
+	tokenfactorytypes "github.com/solva-solutions/neutron/v11/x/tokenfactory/types"
 
-	globalfeetypes "github.com/neutron-org/neutron/v11/x/globalfee/types"
+	globalfeetypes "github.com/solva-solutions/neutron/v11/x/globalfee/types"
 
-	dynamicfeestypes "github.com/neutron-org/neutron/v11/x/dynamicfees/types"
+	dynamicfeestypes "github.com/solva-solutions/neutron/v11/x/dynamicfees/types"
 )
 
 func AcceptedStargateQueries() wasmkeeper.AcceptedQueries {

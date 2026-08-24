@@ -6,11 +6,11 @@ import (
 	"cosmossdk.io/math"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 
-	testkeeper "github.com/neutron-org/neutron/v11/testutil/globalfee/keeper"
+	testkeeper "github.com/solva-solutions/neutron/v11/testutil/globalfee/keeper"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/x/globalfee/types"
+	"github.com/solva-solutions/neutron/v11/x/globalfee/types"
 )
 
 func TestParamsQuery(t *testing.T) {

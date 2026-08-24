@@ -99,6 +99,7 @@ $(BUILD_TARGETS): check_version go.sum $(BUILDDIR)/
 ifeq ($(OS),Windows_NT)
 	exit 1
 else
+	go mod download
 	go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./cmd/neutrond
 endif
 
@@ -113,9 +114,12 @@ build-static-linux-amd64: go.sum $(BUILDDIR)/
 		--build-arg GIT_VERSION=$(VERSION) \
 		--build-arg GIT_COMMIT=$(COMMIT) \
 		--build-arg BUILD_TAGS=$(build_tags_comma_sep),muslc \
+		--build-arg GOPRIVATE=$(GOPRIVATE) \
+		$(if $(GOPRIVATE),--ssh default) \
 		--platform linux/amd64 \
 		-t neutron-amd64 \
 		--load \
+		$(if $(CONNECT_NEUTRON_PATH),--build-context connect-neutron=$(CONNECT_NEUTRON_PATH)) \
 		-f Dockerfile.builder .
 	$(DOCKER) rm -f neutronbinary || true
 	$(DOCKER) create -ti --name neutronbinary neutron-amd64
@@ -134,6 +138,7 @@ build-e2e-docker-image: go.sum $(BUILDDIR)/
 		--platform linux/amd64 \
 		-t neutron-node \
 		--load \
+		$(if $(CONNECT_NEUTRON_PATH),--build-context connect-neutron=$(CONNECT_NEUTRON_PATH)) \
 		-f Dockerfile.builder .
 
 slinky-e2e-test:

@@ -5,21 +5,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neutron-org/neutron/v11/app/config"
+	"github.com/solva-solutions/neutron/v11/app/config"
 
 	pruningtypes "cosmossdk.io/store/pruning/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neutron-org/neutron/v11/testutil/apptesting"
+	"github.com/solva-solutions/neutron/v11/testutil/apptesting"
 
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	"github.com/neutron-org/neutron/v11/app/params"
+	"github.com/solva-solutions/neutron/v11/app/params"
 
-	"github.com/neutron-org/neutron/v11/app"
+	"github.com/solva-solutions/neutron/v11/app"
 
 	tmrand "github.com/cometbft/cometbft/libs/rand"
 	"github.com/cosmos/cosmos-sdk/crypto/hd"

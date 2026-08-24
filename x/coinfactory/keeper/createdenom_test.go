@@ -9,7 +9,7 @@ import (
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
-	"github.com/neutron-org/neutron/v11/x/coinfactory/types"
+	"github.com/solva-solutions/neutron/v11/x/coinfactory/types"
 )
 
 func (suite *KeeperTestSuite) TestMsgCreateDenom() {

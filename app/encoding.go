@@ -3,9 +3,9 @@ package app
 import (
 	"github.com/cosmos/cosmos-sdk/std"
 
-	ethcryptocodec "github.com/neutron-org/neutron/v11/x/crypto/codec"
+	ethcryptocodec "github.com/solva-solutions/neutron/v11/x/crypto/codec"
 
-	"github.com/neutron-org/neutron/v11/app/params"
+	"github.com/solva-solutions/neutron/v11/app/params"
 )
 
 // MakeEncodingConfig creates an EncodingConfig for testing

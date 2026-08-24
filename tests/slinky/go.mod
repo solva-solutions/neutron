@@ -62,12 +62,13 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.6 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
-	github.com/bytedance/sonic v1.14.0 // indirect
-	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/bytedance/gopkg v0.1.3 // indirect
+	github.com/bytedance/sonic v1.15.0 // indirect
+	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
-	github.com/cloudwego/base64x v0.1.5 // indirect
+	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/cncf/xds/go v0.0.0-20250501225837-2ac532fd4443 // indirect
 	github.com/cockroachdb/errors v1.12.0 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240616162244-4768e80dfb9a // indirect
@@ -273,7 +274,7 @@ require (
 )
 
 replace (
-	github.com/cosmos/cosmos-sdk => github.com/neutron-org/cosmos-sdk v0.50.13-neutron.0.20251125163820-71ff8c91e59f
-	github.com/skip-mev/slinky => github.com/neutron-org/connect v1.2.3-0.20251203181514-a2a22987f99d
-	github.com/skip-mev/slinky/tests/integration => github.com/neutron-org/connect/tests/integration v1.2.1-0.20251203181514-a2a22987f99d
+	github.com/cosmos/cosmos-sdk => github.com/solva-solutions/neutron-cosmos-sdk v0.50.13-neutron.0.20251125163820-71ff8c91e59f
+	github.com/skip-mev/slinky => ../../../connect-neutron
+	github.com/skip-mev/slinky/tests/integration => ../../../connect-neutron/tests/integration
 )
