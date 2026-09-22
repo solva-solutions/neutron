@@ -21,6 +21,7 @@ import (
 	v11 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.0.0"
 	v11_1_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.1.0"
 	v11_2_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.2.0"
+	v11_3_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.3.0"
 	v700 "github.com/solva-solutions/neutron/v11/app/upgrades/v7.0.0"
 	v800 "github.com/solva-solutions/neutron/v11/app/upgrades/v8.0.0"
 	v800_rc0 "github.com/solva-solutions/neutron/v11/app/upgrades/v8.0.0-rc0"
@@ -251,6 +252,7 @@ var (
 		v11.Upgrade,
 		v11_1_0.Upgrade,
 		v11_2_0.Upgrade,
+		v11_3_0.Upgrade,
 	}
 
 	// DefaultNodeHome default home directories for the application daemon
