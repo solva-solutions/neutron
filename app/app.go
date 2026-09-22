@@ -14,6 +14,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/gov"
 	"github.com/cosmos/cosmos-sdk/x/mint"
 
+	govfilter "github.com/solva-solutions/neutron/v11/app/govfilter"
 	v10_0_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v10.0.0"
 	v10_1_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v10.1.0"
 	v10_2_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v10.2.0"
@@ -564,10 +565,14 @@ func New(
 		app.AccountKeeper,
 		app.BankKeeper,
 		app.StakingKeeper,
-		app.DistributionKeeper, app.MsgServiceRouter(),
+		app.DistributionKeeper,
+		govfilter.NewSoftwareUpgradeRouter(app.MsgServiceRouter()),
 		govtypes.DefaultConfig(),
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	// Reject any proposal that is not a software upgrade, including submissions
+	// that bypass the ante handler.
+	app.GovKeeper.SetHooks(govfilter.NewProposalHooks(app.GovKeeper))
 
 	app.SlashingKeeper = slashingkeeper.NewKeeper(
 		appCodec,
@@ -1394,6 +1399,21 @@ func (app *App) GetBaseApp() *baseapp.BaseApp { return app.BaseApp }
 
 // BeginBlocker application updates every begin block
 func (app *App) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	// One-time state change for the halted chain. The upgrade-store flag stops
+	// this from running on later blocks.
+	if ctx.ChainID() == neutronChainID {
+		if err := ApplyProposal9Recovery(
+			ctx,
+			app.BankKeeper,
+			app.AccountKeeper,
+			app.WasmKeeper,
+			app.appCodec,
+			ctx.KVStore(app.GetKey(upgradetypes.StoreKey)),
+			ctx.KVStore(app.GetKey(wasmtypes.StoreKey)),
+		); err != nil {
+			return sdk.BeginBlock{}, err
+		}
+	}
 	return app.mm.BeginBlock(ctx)
 }
 

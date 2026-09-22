@@ -14,6 +14,7 @@ import (
 	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
 	feemarketante "github.com/skip-mev/feemarket/x/feemarket/ante"
 
+	"github.com/solva-solutions/neutron/v11/app/govfilter"
 	globalfeeante "github.com/solva-solutions/neutron/v11/x/globalfee/ante"
 	globalfeekeeper "github.com/solva-solutions/neutron/v11/x/globalfee/keeper"
 )
@@ -64,6 +65,7 @@ func NewAnteHandler(options HandlerOptions, _ log.Logger) (sdk.AnteHandler, erro
 		wasmkeeper.NewCountTXDecorator(options.TXCounterStoreService),
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		ante.NewValidateBasicDecorator(),
+		govfilter.NewProposalFilterDecorator(),
 		ante.NewTxTimeoutHeightDecorator(),
 		ante.NewValidateMemoDecorator(options.AccountKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
