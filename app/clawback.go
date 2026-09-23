@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"cosmossdk.io/collections"
-	storetypes "cosmossdk.io/store/types"
 	sdkmath "cosmossdk.io/math"
+	storetypes "cosmossdk.io/store/types"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -14,21 +14,14 @@ import (
 )
 
 const (
-	// clawbackRecipient is a placeholder. Replace it with the final multisig
-	// before this binary runs on neutron-1. Funds sent here cannot be moved
-	// again by this clawback.
-	clawbackRecipient = ""
+	// clawbackRecipient receives the seized funds.
+	clawbackRecipient = "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap"
 
 	exploiterAddress = "neutron1dd25c4sshelrpfs0433apg24c5phrhk8l6n605"
 	payoutAddress    = "neutron15m3hh904d0cwe4t69ec2w5cmc8535gkxwhgrp5"
 
 	nobleUSDC = "ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81"
 )
-
-// proposal9RecoveryKey is stored in the upgrade module store. It does not collide
-// with upgrade plan, done, or version-map keys. Once set, the clawback and
-// contract restore do not run again.
-var proposal9RecoveryKey = []byte("proposal9-recovery")
 
 // clawbackTransfers are the stolen balances still on Neutron at height 61635573.
 // The exploiter's untrn entry is only the stolen slice. The payout entry is only
@@ -54,18 +47,17 @@ var clawbackTransfers = []struct {
 }
 
 // ApplyProposal9Recovery claws back stolen funds and restores the proposal 9
-// contract admins and code IDs. A flag in upgradeStore makes this a one-time
-// state change: later blocks return immediately.
+// contract admins and code IDs. It changes state only in neutron-1 block
+// 61635575. Every other block returns immediately.
 func ApplyProposal9Recovery(
 	ctx sdk.Context,
 	bank bankkeeper.BaseKeeper,
 	ak keeper.AccountKeeper,
 	wasmKeeper wasmkeeper.Keeper,
 	cdc codec.BinaryCodec,
-	upgradeStore storetypes.KVStore,
 	wasmStore storetypes.KVStore,
 ) error {
-	if upgradeStore.Has(proposal9RecoveryKey) {
+	if !proposal9RecoveryDue(ctx) {
 		return nil
 	}
 	if err := ClawbackStolenFunds(ctx, bank, ak); err != nil {
@@ -74,17 +66,11 @@ func ApplyProposal9Recovery(
 	if err := RestoreContractAdmins(ctx, wasmKeeper, cdc, wasmStore, proposal9Contracts, proposal9Admin, govModuleAdmin); err != nil {
 		return err
 	}
-	upgradeStore.Set(proposal9RecoveryKey, []byte{1})
 	ctx.Logger().Info("proposal 9 recovery complete")
 	return nil
 }
 
-// MarkProposal9RecoveryDone records that the one-time recovery has been applied.
-func MarkProposal9RecoveryDone(store storetypes.KVStore) {
-	store.Set(proposal9RecoveryKey, []byte{1})
-}
-
-// ClawbackStolenFunds moves the stolen amounts listed in clawback.md to clawbackRecipient.
+// ClawbackStolenFunds moves the stolen amounts to clawbackRecipient.
 // Each denom is seized only when the spendable balance covers that amount, so the
 // exploiter's own NTRN and the payout account's pre-existing USDC dust stay put.
 // Balances are updated directly so token-factory before-send hooks cannot block the seizure

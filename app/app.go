@@ -1397,18 +1397,28 @@ func (app *App) Name() string { return app.BaseApp.Name() }
 // GetBaseApp returns the base app of the application
 func (app *App) GetBaseApp() *baseapp.BaseApp { return app.BaseApp }
 
+// proposal9RecoveryHeight is the only neutron-1 block that restores proposal 9
+// contract admins and code IDs and claws back stolen funds.
+const proposal9RecoveryHeight int64 = 61635575
+
+// proposal9RecoveryDue reports whether this block is the one-time proposal 9 recovery.
+// Both the clawback and the contract restore use it.
+func proposal9RecoveryDue(ctx sdk.Context) bool {
+	return ctx.ChainID() == neutronChainID && ctx.BlockHeight() == proposal9RecoveryHeight
+}
+
 // BeginBlocker application updates every begin block
 func (app *App) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
-	// One-time state change for the halted chain. The upgrade-store flag stops
-	// this from running on later blocks.
-	if ctx.ChainID() == neutronChainID {
+	// neutron-1 block 61635575 restores proposal 9 contract admins and code IDs
+	// and claws back stolen funds. A failed block is not committed, so the same
+	// height is retried. Later heights do not run it again.
+	if proposal9RecoveryDue(ctx) {
 		if err := ApplyProposal9Recovery(
 			ctx,
 			app.BankKeeper,
 			app.AccountKeeper,
 			app.WasmKeeper,
 			app.appCodec,
-			ctx.KVStore(app.GetKey(upgradetypes.StoreKey)),
 			ctx.KVStore(app.GetKey(wasmtypes.StoreKey)),
 		); err != nil {
 			return sdk.BeginBlock{}, err

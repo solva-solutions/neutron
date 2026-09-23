@@ -40,8 +40,9 @@ var proposal9Contracts = []string{
 
 // RestoreContractAdmins sets each contract's admin from fromAdmin back to toAdmin
 // and points the contract back at the last code ID that fromAdmin did not upload.
-// Contracts that already have toAdmin are left unchanged. A contract that is missing
-// or has any other admin returns an error.
+// It changes state only in neutron-1 block 61635575. Contracts that already have
+// toAdmin are left unchanged. A contract that is missing or has any other admin
+// returns an error.
 func RestoreContractAdmins(
 	ctx sdk.Context,
 	wasmKeeper wasmkeeper.Keeper,
@@ -50,6 +51,10 @@ func RestoreContractAdmins(
 	contracts []string,
 	fromAdmin, toAdmin string,
 ) error {
+	if !proposal9RecoveryDue(ctx) {
+		return nil
+	}
+
 	newAdmin, err := sdk.AccAddressFromBech32(toAdmin)
 	if err != nil {
 		return fmt.Errorf("invalid restored admin %s: %w", toAdmin, err)

@@ -41,6 +41,18 @@ func (suite *RestoreAdminTestSuite) TestRestoreContractAdmins() {
 	changed := instantiateWithAdmin(t, neutronApp, ctx, codeID, creator, badAdmin, "changed")
 	alreadyRestored := instantiateWithAdmin(t, neutronApp, ctx, codeID, creator, govAdmin, "already-restored")
 
+	// Block 61635574 does not restore the admin.
+	require.NoError(t, app.RestoreContractAdmins(
+		ctx.WithChainID("neutron-1").WithBlockHeight(61635574),
+		neutronApp.WasmKeeper,
+		neutronApp.AppCodec(),
+		ctx.KVStore(neutronApp.GetKey(wasmtypes.StoreKey)),
+		[]string{changed.String()},
+		badAdmin.String(),
+		govAdmin.String(),
+	))
+	require.Equal(t, badAdmin.String(), neutronApp.WasmKeeper.GetContractInfo(ctx, changed).Admin)
+
 	require.NoError(t, restoreContracts(ctx, neutronApp, []string{changed.String(), alreadyRestored.String()}, badAdmin.String(), govAdmin.String()))
 
 	require.Equal(t, govAdmin.String(), neutronApp.WasmKeeper.GetContractInfo(ctx, changed).Admin)
@@ -93,7 +105,7 @@ func (suite *RestoreAdminTestSuite) TestRestoreContractCodeID() {
 
 func restoreContracts(ctx sdk.Context, neutronApp *app.App, contracts []string, fromAdmin, toAdmin string) error {
 	return app.RestoreContractAdmins(
-		ctx,
+		ctx.WithChainID("neutron-1").WithBlockHeight(61635575),
 		neutronApp.WasmKeeper,
 		neutronApp.AppCodec(),
 		ctx.KVStore(neutronApp.GetKey(wasmtypes.StoreKey)),
