@@ -5,9 +5,6 @@ import (
 
 	"cosmossdk.io/collections"
 	sdkmath "cosmossdk.io/math"
-	storetypes "cosmossdk.io/store/types"
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
-	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
@@ -15,64 +12,30 @@ import (
 
 const (
 	// clawbackRecipient receives the seized funds.
-	clawbackRecipient = "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap"
+	clawbackRecipient = "neutron1yr29fd7uzdjp2jsq8hrta8mvyd6ex7vumn0shy
 
-	exploiterAddress = "neutron1dd25c4sshelrpfs0433apg24c5phrhk8l6n605"
-	payoutAddress    = "neutron15m3hh904d0cwe4t69ec2w5cmc8535gkxwhgrp5"
-
-	nobleUSDC = "ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81"
-)
-
-// clawbackTransfers are the stolen balances still on Neutron at height 61635573.
-// The exploiter's untrn entry is only the stolen slice. The payout entry is only
-// the 1,000 USDC that came from the exploit. Astroport Treasury is not included.
 var clawbackTransfers = []struct {
 	from string
 	coin sdk.Coin
 }{
-	{exploiterAddress, mustCoin(nobleUSDC, "1671301712957")},
-	{exploiterAddress, mustCoin("factory/neutron1k6hr0f83e7un2wjf29cspk7j69jrnskk65k3ek2nj9dztrlzpj6q00rtsa/udatom", "1592481671557")},
-	{exploiterAddress, mustCoin("untrn", "95196289988992")},
-	{exploiterAddress, mustCoin("factory/neutron1ffus553eet978k024lmssw0czsxwr97mggyv85lpcsdkft8v9ufsz3sa07/astro", "370318691388430")},
-	{exploiterAddress, mustCoin("ibc/A585C2D15DCD3B010849B453A2CFCB5E213208A5AB665691792684C26274304D", "14088467067160856016")},
-	{exploiterAddress, mustCoin("factory/neutron1ug740qrkquxzrk2hh29qrlx3sktkfml3je7juusc2te7xmvsscns0n2wry/wstETH", "293993098793")},
-	{exploiterAddress, mustCoin("factory/neutron10sr06r3qkhn7xzpw3339wuj77hu06mzna6uht0/eclip", "429157300")},
-	{exploiterAddress, mustCoin("ibc/F082B65C88E4B6D5EF1DB243CDA1D331D002759E938A0F5CD3FFDC5D53B3E349", "7141")},
-	{exploiterAddress, mustCoin("ibc/773B4D0A3CD667B2275D5A4A7A2F0909C0BA0F4059C0B9181E680DDF4965DCC7", "2100")},
-	{exploiterAddress, mustCoin("factory/neutron18c8qejysp4hgcfuxdpj4wf29mevzwllz5yh8uayjxamwtrs0n9fshq9vtv/astroport/share", "1000")},
-	{exploiterAddress, mustCoin("factory/neutron1nfns3ck2ykrs0fknckrzd9728cyf77devuzernhwcwrdxw7ssk2s3tjf8r/astroport/share", "1000")},
-	{exploiterAddress, mustCoin("factory/neutron1yem82r0wf837lfkwvcu2zxlyds5qrzwkz8alvmg0apyrjthk64gqeq2e98/astroport/share", "1000")},
-	{exploiterAddress, mustCoin("factory/neutron1zlf3hutsa4qnmue53lz2tfxrutp8y2e3rj4nkghg3rupgl4mqy8s5jgxsn/xASTRO", "1000")},
-	{payoutAddress, mustCoin(nobleUSDC, "1000000000")},
-}
-
-// ApplyProposal9Recovery claws back stolen funds and restores the proposal 9
-// contract admins and code IDs. It changes state only in neutron-1 block
-// 61635575. Every other block returns immediately.
-func ApplyProposal9Recovery(
-	ctx sdk.Context,
-	bank bankkeeper.BaseKeeper,
-	ak keeper.AccountKeeper,
-	wasmKeeper wasmkeeper.Keeper,
-	cdc codec.BinaryCodec,
-	wasmStore storetypes.KVStore,
-) error {
-	if !proposal9RecoveryDue(ctx) {
-		return nil
-	}
-	if err := ClawbackStolenFunds(ctx, bank, ak); err != nil {
-		return err
-	}
-	if err := RestoreContractAdmins(ctx, wasmKeeper, cdc, wasmStore, proposal9Contracts, proposal9Admin, govModuleAdmin); err != nil {
-		return err
-	}
-	ctx.Logger().Info("proposal 9 recovery complete")
-	return nil
+	{attackerAddress, mustCoin("ibc/B559A80D62249C8AA07A380E2A2BEA6E5CA9A6F079C912C3A9E9B494105E4F81", "1671301712957")},
+	{attackerAddress, mustCoin("factory/neutron1k6hr0f83e7un2wjf29cspk7j69jrnskk65k3ek2nj9dztrlzpj6q00rtsa/udatom", "1592481671557")},
+	{attackerAddress, mustCoin("untrn", "95196289988992")},
+	{attackerAddress, mustCoin("factory/neutron1ffus553eet978k024lmssw0czsxwr97mggyv85lpcsdkft8v9ufsz3sa07/astro", "370318691388430")},
+	{attackerAddress, mustCoin("ibc/A585C2D15DCD3B010849B453A2CFCB5E213208A5AB665691792684C26274304D", "14088467067160856016")},
+	{attackerAddress, mustCoin("factory/neutron1ug740qrkquxzrk2hh29qrlx3sktkfml3je7juusc2te7xmvsscns0n2wry/wstETH", "293993098793")},
+	{attackerAddress, mustCoin("factory/neutron10sr06r3qkhn7xzpw3339wuj77hu06mzna6uht0/eclip", "429157300")},
+	{attackerAddress, mustCoin("ibc/F082B65C88E4B6D5EF1DB243CDA1D331D002759E938A0F5CD3FFDC5D53B3E349", "7141")},
+	{attackerAddress, mustCoin("ibc/773B4D0A3CD667B2275D5A4A7A2F0909C0BA0F4059C0B9181E680DDF4965DCC7", "2100")},
+	{attackerAddress, mustCoin("factory/neutron18c8qejysp4hgcfuxdpj4wf29mevzwllz5yh8uayjxamwtrs0n9fshq9vtv/astroport/share", "1000")},
+	{attackerAddress, mustCoin("factory/neutron1nfns3ck2ykrs0fknckrzd9728cyf77devuzernhwcwrdxw7ssk2s3tjf8r/astroport/share", "1000")},
+	{attackerAddress, mustCoin("factory/neutron1yem82r0wf837lfkwvcu2zxlyds5qrzwkz8alvmg0apyrjthk64gqeq2e98/astroport/share", "1000")},
+	{attackerAddress, mustCoin("factory/neutron1zlf3hutsa4qnmue53lz2tfxrutp8y2e3rj4nkghg3rupgl4mqy8s5jgxsn/xASTRO", "1000")},
 }
 
 // ClawbackStolenFunds moves the stolen amounts to clawbackRecipient.
 // Each denom is seized only when the spendable balance covers that amount, so the
-// exploiter's own NTRN and the payout account's pre-existing USDC dust stay put.
+// attacker's own NTRN stays put.
 // Balances are updated directly so token-factory before-send hooks cannot block the seizure
 // or run during BeginBlock.
 func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.AccountKeeper) error {

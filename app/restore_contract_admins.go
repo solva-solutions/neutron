@@ -16,10 +16,6 @@ const (
 	// govModuleAdmin is the x/gov module account. It was the contract admin
 	// before governance proposal 9.
 	govModuleAdmin = "neutron10d07y265gmmuvt4z0w9aw880jnsr700j7a68v5"
-
-	// proposal9Admin is the admin set by governance proposal 9, and the address
-	// that uploaded the replacement contract code.
-	proposal9Admin = "neutron1dd25c4sshelrpfs0433apg24c5phrhk8l6n605"
 )
 
 // proposal9Contracts are the contracts whose admin and code ID proposal 9's
