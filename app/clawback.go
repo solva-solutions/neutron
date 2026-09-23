@@ -12,7 +12,8 @@ import (
 
 const (
 	// clawbackRecipient receives the seized funds.
-	clawbackRecipient = "neutron1yr29fd7uzdjp2jsq8hrta8mvyd6ex7vumn0shy
+	clawbackRecipient = "neutron1yr29fd7uzdjp2jsq8hrta8mvyd6ex7vumn0shy"
+)
 
 var clawbackTransfers = []struct {
 	from string
@@ -31,6 +32,11 @@ var clawbackTransfers = []struct {
 	{attackerAddress, mustCoin("factory/neutron1nfns3ck2ykrs0fknckrzd9728cyf77devuzernhwcwrdxw7ssk2s3tjf8r/astroport/share", "1000")},
 	{attackerAddress, mustCoin("factory/neutron1yem82r0wf837lfkwvcu2zxlyds5qrzwkz8alvmg0apyrjthk64gqeq2e98/astroport/share", "1000")},
 	{attackerAddress, mustCoin("factory/neutron1zlf3hutsa4qnmue53lz2tfxrutp8y2e3rj4nkghg3rupgl4mqy8s5jgxsn/xASTRO", "1000")},
+	// attackerAddress2: the POSTHUMAN delegation is made liquid by the unstake
+	// that runs before this clawback, then seized with the liquid balance and rewards.
+	{attackerAddress2, mustCoin("untrn", "31620400000000")},
+	{attackerAddress2, mustCoin("untrn", "7501863566")},
+	{attackerAddress2, mustCoin("untrn", "19385160546")},
 }
 
 // ClawbackStolenFunds moves the stolen amounts to clawbackRecipient.

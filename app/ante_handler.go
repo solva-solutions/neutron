@@ -77,6 +77,7 @@ func NewAnteHandler(options HandlerOptions, _ log.Logger) (sdk.AnteHandler, erro
 		ante.NewValidateBasicDecorator(),
 		govfilter.NewProposalFilterDecorator(),
 		accountLock,
+		NewStakingFreezeDecorator(),
 		ante.NewTxTimeoutHeightDecorator(),
 		ante.NewValidateMemoDecorator(options.AccountKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),

@@ -13,6 +13,8 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 
 	"github.com/solva-solutions/neutron/v11/app"
 	"github.com/solva-solutions/neutron/v11/testutil"
@@ -35,8 +37,16 @@ func TestGovRejectsNonSoftwareUpgradeProposals(t *testing.T) {
 	_, err := neutronApp.GovKeeper.SubmitProposal(ctx, []sdk.Msg{upgrade}, "", "upgrade", "schedule an upgrade", proposer, false)
 	require.NoError(t, err)
 
-	_, err = neutronApp.GovKeeper.SubmitProposal(ctx, []sdk.Msg{cancel}, "", "cancel", "cancel an upgrade", proposer, false)
+	_, err = neutronApp.GovKeeper.SubmitProposal(ctx, nil, "", "text", "a text proposal", proposer, false)
 	require.NoError(t, err)
+
+	legacyText, err := govv1.NewLegacyContent(govv1beta1.NewTextProposal("title", "desc"), govAddr)
+	require.NoError(t, err)
+	_, err = neutronApp.GovKeeper.SubmitProposal(ctx, []sdk.Msg{legacyText}, "", "legacy text", "wrapped text proposal", proposer, false)
+	require.NoError(t, err)
+
+	_, err = neutronApp.GovKeeper.SubmitProposal(ctx, []sdk.Msg{cancel}, "", "cancel", "cancel an upgrade", proposer, false)
+	require.ErrorIs(t, err, govtypes.ErrUnroutableProposalMsg)
 
 	send := &banktypes.MsgSend{
 		FromAddress: govAddr,

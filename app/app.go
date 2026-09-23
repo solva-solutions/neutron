@@ -570,8 +570,9 @@ func New(
 		govtypes.DefaultConfig(),
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
-	// Reject any proposal that is not a software upgrade, including submissions
-	// that bypass the ante handler.
+	// Reject any proposal that is not a software upgrade or a text proposal,
+	// including submissions that bypass the ante handler.
+	app.GovKeeper.SetLegacyRouter(govfilter.NewLegacyTextRouter())
 	app.GovKeeper.SetHooks(govfilter.NewProposalHooks(app.GovKeeper))
 
 	app.SlashingKeeper = slashingkeeper.NewKeeper(
@@ -1398,52 +1399,9 @@ func (app *App) Name() string { return app.BaseApp.Name() }
 // GetBaseApp returns the base app of the application
 func (app *App) GetBaseApp() *baseapp.BaseApp { return app.BaseApp }
 
-const (
-	// attackerAddress and attackerAddress2 belong to the proposal 9 attacker.
-	// attackerAddress received the contract admins and the stolen funds. The
-	// clawback seizes that account, contract restore treats it as the admin to
-	// replace, and the ante handler rejects transactions from both accounts.
-	attackerAddress  = "neutron1dd25c4sshelrpfs0433apg24c5phrhk8l6n605"
-	attackerAddress2 = "neutron1ekgfga6vv4zdrrjn3dux6f62fuzektfndgaehm"
-
-	// proposal9RecoveryHeight is the only neutron-1 block that restores proposal 9
-	// contract admins and code IDs and claws back stolen funds.
-	proposal9RecoveryHeight int64 = 61635575
-)
-
-// proposal9RecoveryDue reports whether this block is the one-time proposal 9 recovery.
-// Both the clawback and the contract restore use it.
-func proposal9RecoveryDue(ctx sdk.Context) bool {
-	return ctx.ChainID() == neutronChainID && ctx.BlockHeight() == proposal9RecoveryHeight
-}
-
-// RecoverProposal9 seizes stolen funds and restores proposal 9 contract admins
-// and code IDs. It changes state only in neutron-1 block 61635575.
-func (app *App) RecoverProposal9(ctx sdk.Context) error {
-	if !proposal9RecoveryDue(ctx) {
-		return nil
-	}
-	if err := ClawbackStolenFunds(ctx, app.BankKeeper, app.AccountKeeper); err != nil {
-		return err
-	}
-	if err := RestoreContractAdmins(
-		ctx,
-		app.WasmKeeper,
-		app.appCodec,
-		ctx.KVStore(app.GetKey(wasmtypes.StoreKey)),
-		proposal9Contracts,
-		attackerAddress,
-		govModuleAdmin,
-	); err != nil {
-		return err
-	}
-	ctx.Logger().Info("proposal 9 recovery complete")
-	return nil
-}
-
 // BeginBlocker application updates every begin block
 func (app *App) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
-	// neutron-1 block 61635575 restores proposal 9 contract admins and code IDs
+	// neutron-1 block 61635575 restores proposal 9 contracts, unstakes the voter,
 	// and claws back stolen funds. A failed block is not committed, so the same
 	// height is retried. Later heights do not run it again.
 	if err := app.RecoverProposal9(ctx); err != nil {
@@ -1454,7 +1412,13 @@ func (app *App) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 
 // EndBlocker application updates every end block
 func (app *App) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
-	return app.mm.EndBlock(ctx)
+	endBlock, err := app.mm.EndBlock(ctx)
+	if err != nil {
+		return endBlock, err
+	}
+	// Keep the validator set fixed except for the POSTHUMAN unstake in block 61635575.
+	endBlock.ValidatorUpdates = FreezeValidatorUpdates(ctx, endBlock.ValidatorUpdates)
+	return endBlock, nil
 }
 
 // InitChainer application update at chain initialization

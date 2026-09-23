@@ -21,11 +21,18 @@ func TestValidateProposalMessages(t *testing.T) {
 	cancelMsg := &upgradetypes.MsgCancelUpgrade{Authority: "neutron1gov"}
 	sendMsg := &banktypes.MsgSend{FromAddress: "neutron1gov", ToAddress: "neutron1user", Amount: sdk.NewCoins(sdk.NewInt64Coin("untrn", 1))}
 
+	text, err := govv1.NewLegacyContent(govv1beta1.NewTextProposal("title", "desc"), "neutron1gov")
+	require.NoError(t, err)
+
+	require.NoError(t, govfilter.ValidateProposalMessages(nil))
+	require.NoError(t, govfilter.ValidateProposalMessages([]sdk.Msg{}))
 	require.NoError(t, govfilter.ValidateProposalMessages([]sdk.Msg{upgradeMsg}))
-	require.NoError(t, govfilter.ValidateProposalMessages([]sdk.Msg{cancelMsg, upgradeMsg}))
-	require.ErrorIs(t, govfilter.ValidateProposalMessages(nil), govfilter.ErrOnlySoftwareUpgradeProposals)
+	require.NoError(t, govfilter.ValidateProposalMessages([]sdk.Msg{text}))
+	require.ErrorIs(t, govfilter.ValidateProposalMessages([]sdk.Msg{cancelMsg}), govfilter.ErrOnlySoftwareUpgradeProposals)
+	require.ErrorIs(t, govfilter.ValidateProposalMessages([]sdk.Msg{cancelMsg, upgradeMsg}), govfilter.ErrOnlySoftwareUpgradeProposals)
 	require.ErrorIs(t, govfilter.ValidateProposalMessages([]sdk.Msg{sendMsg}), govfilter.ErrOnlySoftwareUpgradeProposals)
 	require.ErrorIs(t, govfilter.ValidateProposalMessages([]sdk.Msg{upgradeMsg, sendMsg}), govfilter.ErrOnlySoftwareUpgradeProposals)
+	require.ErrorIs(t, govfilter.ValidateProposalMessages([]sdk.Msg{upgradeMsg, text}), govfilter.ErrOnlySoftwareUpgradeProposals)
 }
 
 func TestValidateTxMessages(t *testing.T) {
@@ -35,6 +42,10 @@ func TestValidateTxMessages(t *testing.T) {
 	allowed, err := govv1.NewMsgSubmitProposal([]sdk.Msg{upgradeMsg}, nil, "neutron1user", "", "upgrade", "schedule", false)
 	require.NoError(t, err)
 	require.NoError(t, govfilter.ValidateTxMessages([]sdk.Msg{allowed}))
+
+	textOnly, err := govv1.NewMsgSubmitProposal(nil, nil, "neutron1user", "", "text", "discussion", false)
+	require.NoError(t, err)
+	require.NoError(t, govfilter.ValidateTxMessages([]sdk.Msg{textOnly}))
 
 	denied, err := govv1.NewMsgSubmitProposal([]sdk.Msg{sendMsg}, nil, "neutron1user", "", "send", "nope", false)
 	require.NoError(t, err)

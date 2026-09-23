@@ -15,44 +15,61 @@ import (
 	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 )
 
-// ErrOnlySoftwareUpgradeProposals is returned when a governance proposal contains
-// anything other than x/upgrade software-upgrade messages.
+// ErrOnlySoftwareUpgradeProposals is returned when a governance proposal is not a
+// software upgrade or a text proposal.
 var ErrOnlySoftwareUpgradeProposals = errorsmod.Register(
 	"neutron-gov",
 	1,
-	"only software upgrade proposals are allowed",
+	"only software upgrade and text proposals are allowed",
 )
 
-// IsSoftwareUpgradeMsg reports whether msg is a software-upgrade governance message.
-// MsgCancelUpgrade is included so governance can still clear a scheduled upgrade.
+// IsSoftwareUpgradeMsg reports whether msg is MsgSoftwareUpgrade.
+// MsgCancelUpgrade is not allowed.
 func IsSoftwareUpgradeMsg(msg sdk.Msg) bool {
-	switch msg.(type) {
-	case *upgradetypes.MsgSoftwareUpgrade, *upgradetypes.MsgCancelUpgrade:
-		return true
-	default:
-		return false
-	}
+	_, ok := msg.(*upgradetypes.MsgSoftwareUpgrade)
+	return ok
 }
 
-// IsSoftwareUpgradeTypeURL reports whether typeURL is a software-upgrade message type.
+// IsSoftwareUpgradeTypeURL reports whether typeURL is MsgSoftwareUpgrade.
 func IsSoftwareUpgradeTypeURL(typeURL string) bool {
-	switch typeURL {
-	case sdk.MsgTypeURL(&upgradetypes.MsgSoftwareUpgrade{}),
-		sdk.MsgTypeURL(&upgradetypes.MsgCancelUpgrade{}):
-		return true
-	default:
-		return false
-	}
+	return typeURL == sdk.MsgTypeURL(&upgradetypes.MsgSoftwareUpgrade{})
 }
 
-// ValidateProposalMessages requires every message to be a software-upgrade message
-// and rejects empty proposals.
+// isTextProposalMsg reports whether msg is a legacy text proposal wrapped in
+// MsgExecLegacyContent. An empty message list is also a text proposal.
+func isTextProposalMsg(msg sdk.Msg) bool {
+	legacy, ok := msg.(*govv1.MsgExecLegacyContent)
+	if !ok || legacy.Content == nil {
+		return false
+	}
+	if content, err := govv1.LegacyContentFromMessage(legacy); err == nil {
+		_, ok = content.(*govv1beta1.TextProposal)
+		return ok
+	}
+	return legacy.Content.TypeUrl == sdk.MsgTypeURL(&govv1beta1.TextProposal{})
+}
+
+// allowedByRouter reports whether governance may route and execute msg.
+func allowedByRouter(msg sdk.Msg) bool {
+	return IsSoftwareUpgradeMsg(msg) || isTextProposalMsg(msg)
+}
+
+// ValidateProposalMessages allows a software-upgrade proposal or a text proposal.
+// A text proposal has no messages, or only legacy text messages. Mixing the two,
+// and every other message including MsgCancelUpgrade, is rejected.
 func ValidateProposalMessages(msgs []sdk.Msg) error {
 	if len(msgs) == 0 {
-		return ErrOnlySoftwareUpgradeProposals.Wrap("proposal has no messages")
+		return nil
 	}
+	upgrades, texts := true, true
 	for _, msg := range msgs {
 		if !IsSoftwareUpgradeMsg(msg) {
+			upgrades = false
+		}
+		if !isTextProposalMsg(msg) {
+			texts = false
+		}
+		if !upgrades && !texts {
 			return ErrOnlySoftwareUpgradeProposals.Wrapf("message type %s is not allowed", sdk.MsgTypeURL(msg))
 		}
 	}
@@ -60,7 +77,7 @@ func ValidateProposalMessages(msgs []sdk.Msg) error {
 }
 
 // ValidateTxMessages rejects transactions that submit a governance proposal which
-// is not a software upgrade. Nested authz executions are checked as well.
+// is not a software upgrade or a text proposal. Nested authz executions are checked as well.
 func ValidateTxMessages(msgs []sdk.Msg) error {
 	for _, msg := range msgs {
 		switch m := msg.(type) {
@@ -103,20 +120,32 @@ func (ProposalFilterDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate b
 	return next(ctx, tx, simulate)
 }
 
-// softwareUpgradeRouter hides every message handler except software-upgrade messages
-// from the governance keeper, so those messages cannot be submitted or executed
-// through a proposal.
+// softwareUpgradeRouter hides every message handler except software-upgrade and
+// legacy text-proposal messages, so other proposal messages cannot be submitted
+// or executed.
 type softwareUpgradeRouter struct {
 	inner baseapp.MessageRouter
 }
 
-// NewSoftwareUpgradeRouter wraps inner so governance can only route software-upgrade messages.
+// NewLegacyTextRouter returns the v1beta1 router used by MsgExecLegacyContent.
+// Its only route accepts text proposals and does not execute them.
+func NewLegacyTextRouter() govv1beta1.Router {
+	return govv1beta1.NewRouter().AddRoute(govtypes.RouterKey, func(_ sdk.Context, content govv1beta1.Content) error {
+		if _, ok := content.(*govv1beta1.TextProposal); !ok {
+			return ErrOnlySoftwareUpgradeProposals.Wrapf("legacy content %T is not a text proposal", content)
+		}
+		return nil
+	})
+}
+
+// NewSoftwareUpgradeRouter wraps inner so governance can only route software
+// upgrades and legacy text proposals.
 func NewSoftwareUpgradeRouter(inner baseapp.MessageRouter) baseapp.MessageRouter {
 	return softwareUpgradeRouter{inner: inner}
 }
 
 func (r softwareUpgradeRouter) Handler(msg sdk.Msg) baseapp.MsgServiceHandler {
-	if !IsSoftwareUpgradeMsg(msg) {
+	if !allowedByRouter(msg) {
 		return nil
 	}
 	return r.inner.Handler(msg)
@@ -129,9 +158,9 @@ func (r softwareUpgradeRouter) HandlerByTypeURL(typeURL string) baseapp.MsgServi
 	return r.inner.HandlerByTypeURL(typeURL)
 }
 
-// ProposalHooks rejects newly submitted proposals that are not software upgrades.
-// This covers submission paths that do not pass through the ante handler, such as
-// contracts and authz.
+// ProposalHooks rejects newly submitted proposals that are not software upgrades
+// or text proposals. This covers submission paths that do not pass through the
+// ante handler, such as contracts and authz.
 type ProposalHooks struct {
 	keeper *govkeeper.Keeper
 }

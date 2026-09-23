@@ -10,13 +10,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-const (
-	neutronChainID = "neutron-1"
-
-	// govModuleAdmin is the x/gov module account. It was the contract admin
-	// before governance proposal 9.
-	govModuleAdmin = "neutron10d07y265gmmuvt4z0w9aw880jnsr700j7a68v5"
-)
+// govModuleAdmin is the x/gov module account. It was the contract admin
+// before governance proposal 9.
+const govModuleAdmin = "neutron10d07y265gmmuvt4z0w9aw880jnsr700j7a68v5"
 
 // proposal9Contracts are the contracts whose admin and code ID proposal 9's
 // attacker changed.
