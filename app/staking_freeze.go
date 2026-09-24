@@ -5,12 +5,10 @@ import (
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
-	abci "github.com/cometbft/cometbft/abci/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authz "github.com/cosmos/cosmos-sdk/x/authz"
 	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
-	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
@@ -21,8 +19,8 @@ var ErrStakingFrozen = errorsmod.Register(
 	"staking is frozen",
 )
 
-// StakingFreezeDecorator rejects delegation, redelegation, validator-creation,
-// and unjail messages on neutron-1 after the halt.
+// StakingFreezeDecorator rejects messages that add new bonded stake on neutron-1
+// after the halt.
 type StakingFreezeDecorator struct{}
 
 // NewStakingFreezeDecorator returns the ante decorator that freezes staking messages.
@@ -67,14 +65,13 @@ func rejectFrozenStakingMsgs(msgs []sdk.Msg) error {
 	return nil
 }
 
-// frozenStakingMsgs are the message types rejected while staking is frozen.
-// MsgUndelegate stays allowed so holders can exit.
+// frozenStakingMsgs are the message types rejected while staking is frozen: the
+// ones that add new bonded stake, and with it governance voting power.
+// Redelegating, undelegating, and unjailing stay allowed.
 var frozenStakingMsgs = map[string]struct{}{
 	sdk.MsgTypeURL(&stakingtypes.MsgDelegate{}):                  {},
-	sdk.MsgTypeURL(&stakingtypes.MsgBeginRedelegate{}):           {},
 	sdk.MsgTypeURL(&stakingtypes.MsgCancelUnbondingDelegation{}): {},
 	sdk.MsgTypeURL(&stakingtypes.MsgCreateValidator{}):           {},
-	sdk.MsgTypeURL(&slashingtypes.MsgUnjail{}):                   {},
 }
 
 func isFrozenStakingMsg(msg sdk.Msg) bool {
@@ -103,16 +100,4 @@ func (StakingFreezeCircuit) IsAllowed(ctx context.Context, typeURL string) (bool
 		return false, ErrStakingFrozen.Wrapf("%s", typeURL)
 	}
 	return true, nil
-}
-
-// FreezeValidatorUpdates drops Tendermint voting-power changes on neutron-1 after
-// the proposal 9 recovery block. Every earlier block, including the recovery
-// block with the POSTHUMAN unstake, keeps its updates, so the Tendermint set stays
-// equal to the staking set as of the end of block 61635575. Staking has already
-// written its power index; only this returned set reaches Tendermint.
-func FreezeValidatorUpdates(ctx sdk.Context, updates []abci.ValidatorUpdate) []abci.ValidatorUpdate {
-	if ctx.ChainID() == neutronChainID && ctx.BlockHeight() > proposal9RecoveryHeight {
-		return nil
-	}
-	return updates
 }

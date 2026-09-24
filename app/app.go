@@ -1415,13 +1415,7 @@ func (app *App) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 
 // EndBlocker application updates every end block
 func (app *App) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
-	endBlock, err := app.mm.EndBlock(ctx)
-	if err != nil {
-		return endBlock, err
-	}
-	// Keep the validator set fixed after the POSTHUMAN unstake in block 61635575.
-	endBlock.ValidatorUpdates = FreezeValidatorUpdates(ctx, endBlock.ValidatorUpdates)
-	return endBlock, nil
+	return app.mm.EndBlock(ctx)
 }
 
 // InitChainer application update at chain initialization

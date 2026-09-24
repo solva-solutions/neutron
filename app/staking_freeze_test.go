@@ -3,7 +3,6 @@ package app_test
 import (
 	"testing"
 
-	abci "github.com/cometbft/cometbft/abci/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/stretchr/testify/require"
 	protov2 "google.golang.org/protobuf/proto"
@@ -48,26 +47,32 @@ func TestStakingFreezeDecorator(t *testing.T) {
 	_, err = decorator.AnteHandle(neutronCtx.WithBlockHeight(61635573), freezeTx{msgs: []sdk.Msg{delegate}}, false, next)
 	require.NoError(t, err)
 
-	// Holders can still undelegate.
-	undelegate := &stakingtypes.MsgUndelegate{
+	// Moving or removing existing stake still works.
+	for _, msg := range []sdk.Msg{
+		&stakingtypes.MsgUndelegate{
+			DelegatorAddress: "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap",
+			ValidatorAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
+			Amount:           sdk.NewInt64Coin("untrn", 1),
+		},
+		&stakingtypes.MsgBeginRedelegate{
+			DelegatorAddress:    "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap",
+			ValidatorSrcAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
+			ValidatorDstAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
+			Amount:              sdk.NewInt64Coin("untrn", 1),
+		},
+		&slashingtypes.MsgUnjail{ValidatorAddr: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa"},
+	} {
+		_, err = decorator.AnteHandle(neutronCtx, freezeTx{msgs: []sdk.Msg{msg}}, false, next)
+		require.NoError(t, err, sdk.MsgTypeURL(msg))
+	}
+
+	cancel := &stakingtypes.MsgCancelUnbondingDelegation{
 		DelegatorAddress: "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap",
 		ValidatorAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
 		Amount:           sdk.NewInt64Coin("untrn", 1),
+		CreationHeight:   1,
 	}
-	_, err = decorator.AnteHandle(neutronCtx, freezeTx{msgs: []sdk.Msg{undelegate}}, false, next)
-	require.NoError(t, err)
-
-	unjail := &slashingtypes.MsgUnjail{ValidatorAddr: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa"}
-	_, err = decorator.AnteHandle(neutronCtx, freezeTx{msgs: []sdk.Msg{unjail}}, false, next)
-	require.ErrorIs(t, err, app.ErrStakingFrozen)
-
-	redelegate := &stakingtypes.MsgBeginRedelegate{
-		DelegatorAddress:    "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap",
-		ValidatorSrcAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
-		ValidatorDstAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
-		Amount:              sdk.NewInt64Coin("untrn", 1),
-	}
-	exec := authz.NewMsgExec(mustAccAddress(t, "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap"), []sdk.Msg{redelegate})
+	exec := authz.NewMsgExec(mustAccAddress(t, "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap"), []sdk.Msg{cancel})
 	_, err = decorator.AnteHandle(neutronCtx, freezeTx{msgs: []sdk.Msg{&exec}}, false, next)
 	require.ErrorIs(t, err, app.ErrStakingFrozen)
 }
@@ -78,10 +83,8 @@ func TestStakingFreezeCircuit(t *testing.T) {
 
 	for _, msg := range []sdk.Msg{
 		&stakingtypes.MsgDelegate{},
-		&stakingtypes.MsgBeginRedelegate{},
 		&stakingtypes.MsgCancelUnbondingDelegation{},
 		&stakingtypes.MsgCreateValidator{},
-		&slashingtypes.MsgUnjail{},
 	} {
 		typeURL := sdk.MsgTypeURL(msg)
 		allowed, err := circuit.IsAllowed(after, typeURL)
@@ -96,7 +99,12 @@ func TestStakingFreezeCircuit(t *testing.T) {
 		}
 	}
 
-	for _, msg := range []sdk.Msg{&stakingtypes.MsgUndelegate{}, &banktypes.MsgSend{}} {
+	for _, msg := range []sdk.Msg{
+		&stakingtypes.MsgUndelegate{},
+		&stakingtypes.MsgBeginRedelegate{},
+		&slashingtypes.MsgUnjail{},
+		&banktypes.MsgSend{},
+	} {
 		allowed, err := circuit.IsAllowed(after, sdk.MsgTypeURL(msg))
 		require.NoError(t, err)
 		require.True(t, allowed)
@@ -121,18 +129,6 @@ func TestStakingFreezeRouter(t *testing.T) {
 
 	_, err = handler(ctx.WithChainID("testing"), delegate)
 	require.NotErrorIs(t, err, app.ErrStakingFrozen)
-}
-
-func TestFreezeValidatorUpdates(t *testing.T) {
-	updates := []abci.ValidatorUpdate{{}}
-
-	// Blocks up to the recovery block keep their validator updates.
-	for _, height := range []int64{1, 61635573, 61635574, 61635575} {
-		require.Equal(t, updates, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(height), updates))
-	}
-	require.Nil(t, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(61635576), updates))
-	require.Nil(t, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(70000000), updates))
-	require.Equal(t, updates, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("testing").WithBlockHeight(1), updates))
 }
 
 type freezeTx struct {
