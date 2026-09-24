@@ -75,7 +75,7 @@ func NewAnteHandler(options HandlerOptions, _ log.Logger) (sdk.AnteHandler, erro
 		wasmkeeper.NewCountTXDecorator(options.TXCounterStoreService),
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		ante.NewValidateBasicDecorator(),
-		govfilter.NewProposalFilterDecorator(),
+		govfilter.NewProposalFilterDecorator(Proposal9ProtectionsActive),
 		accountLock,
 		NewStakingFreezeDecorator(),
 		ante.NewTxTimeoutHeightDecorator(),

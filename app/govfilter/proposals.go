@@ -104,58 +104,97 @@ func ValidateTxMessages(msgs []sdk.Msg) error {
 	return nil
 }
 
+// Active reports whether the proposal restriction applies in ctx. When it returns
+// false, every filter in this package behaves as if it were not installed and
+// consumes no gas, so blocks from before the restriction replay unchanged.
+type Active func(ctx sdk.Context) bool
+
 // ProposalFilterDecorator rejects proposal transactions that are not software upgrades.
-type ProposalFilterDecorator struct{}
+type ProposalFilterDecorator struct {
+	active Active
+}
 
 // NewProposalFilterDecorator returns an ante decorator that enforces the software-upgrade proposal restriction.
-func NewProposalFilterDecorator() ProposalFilterDecorator {
-	return ProposalFilterDecorator{}
+func NewProposalFilterDecorator(active Active) ProposalFilterDecorator {
+	return ProposalFilterDecorator{active: active}
 }
 
 // AnteHandle implements sdk.AnteDecorator.
-func (ProposalFilterDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
-	if err := ValidateTxMessages(tx.GetMsgs()); err != nil {
-		return ctx, err
+func (d ProposalFilterDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
+	if d.active(ctx) {
+		if err := ValidateTxMessages(tx.GetMsgs()); err != nil {
+			return ctx, err
+		}
 	}
 	return next(ctx, tx, simulate)
 }
 
-// softwareUpgradeRouter hides every message handler except software-upgrade and
-// legacy text-proposal messages, so other proposal messages cannot be submitted
-// or executed.
+// softwareUpgradeRouter refuses to execute every message except software-upgrade
+// and legacy text-proposal messages while the restriction is active.
 type softwareUpgradeRouter struct {
-	inner baseapp.MessageRouter
+	inner  baseapp.MessageRouter
+	active Active
+}
+
+// legacyTextRouter is the v1beta1 router used by MsgExecLegacyContent. While the
+// restriction is active its routes accept text proposals and execute nothing.
+// Before that it panics like the nil legacy router v11.3.0 ran with.
+type legacyTextRouter struct {
+	active Active
 }
 
 // NewLegacyTextRouter returns the v1beta1 router used by MsgExecLegacyContent.
-// Its only route accepts text proposals and does not execute them.
-func NewLegacyTextRouter() govv1beta1.Router {
-	return govv1beta1.NewRouter().AddRoute(govtypes.RouterKey, func(_ sdk.Context, content govv1beta1.Content) error {
+func NewLegacyTextRouter(active Active) govv1beta1.Router {
+	return legacyTextRouter{active: active}
+}
+
+func (legacyTextRouter) AddRoute(string, govv1beta1.Handler) govv1beta1.Router {
+	panic("legacy text router does not accept routes")
+}
+
+// HasRoute reports true for every route, so the handler decides with the context.
+func (legacyTextRouter) HasRoute(string) bool { return true }
+
+func (r legacyTextRouter) GetRoute(string) govv1beta1.Handler {
+	return func(ctx sdk.Context, content govv1beta1.Content) error {
+		if !r.active(ctx) {
+			panic("governance has no legacy proposal router")
+		}
 		if _, ok := content.(*govv1beta1.TextProposal); !ok {
 			return ErrOnlySoftwareUpgradeProposals.Wrapf("legacy content %T is not a text proposal", content)
 		}
 		return nil
-	})
+	}
 }
 
-// NewSoftwareUpgradeRouter wraps inner so governance can only route software
-// upgrades and legacy text proposals.
-func NewSoftwareUpgradeRouter(inner baseapp.MessageRouter) baseapp.MessageRouter {
-	return softwareUpgradeRouter{inner: inner}
+func (legacyTextRouter) Seal() {}
+
+// NewSoftwareUpgradeRouter wraps inner so governance can only execute software
+// upgrades and legacy text proposals while active reports true. The router has
+// no context when a handler is looked up, so submissions are refused by
+// ProposalHooks and execution is refused by the returned handler.
+func NewSoftwareUpgradeRouter(inner baseapp.MessageRouter, active Active) baseapp.MessageRouter {
+	return softwareUpgradeRouter{inner: inner, active: active}
 }
 
 func (r softwareUpgradeRouter) Handler(msg sdk.Msg) baseapp.MsgServiceHandler {
-	if !allowedByRouter(msg) {
-		return nil
-	}
-	return r.inner.Handler(msg)
+	return r.guard(r.inner.Handler(msg))
 }
 
 func (r softwareUpgradeRouter) HandlerByTypeURL(typeURL string) baseapp.MsgServiceHandler {
-	if !IsSoftwareUpgradeTypeURL(typeURL) {
+	return r.guard(r.inner.HandlerByTypeURL(typeURL))
+}
+
+func (r softwareUpgradeRouter) guard(handler baseapp.MsgServiceHandler) baseapp.MsgServiceHandler {
+	if handler == nil {
 		return nil
 	}
-	return r.inner.HandlerByTypeURL(typeURL)
+	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
+		if r.active(ctx) && !allowedByRouter(msg) {
+			return nil, ErrOnlySoftwareUpgradeProposals.Wrapf("governance cannot execute %s", sdk.MsgTypeURL(msg))
+		}
+		return handler(ctx, msg)
+	}
 }
 
 // ProposalHooks rejects newly submitted proposals that are not software upgrades
@@ -163,15 +202,19 @@ func (r softwareUpgradeRouter) HandlerByTypeURL(typeURL string) baseapp.MsgServi
 // ante handler, such as contracts and authz.
 type ProposalHooks struct {
 	keeper *govkeeper.Keeper
+	active Active
 }
 
 // NewProposalHooks returns governance hooks bound to keeper.
-func NewProposalHooks(k *govkeeper.Keeper) ProposalHooks {
-	return ProposalHooks{keeper: k}
+func NewProposalHooks(k *govkeeper.Keeper, active Active) ProposalHooks {
+	return ProposalHooks{keeper: k, active: active}
 }
 
 // AfterProposalSubmission implements govtypes.GovHooks.
 func (h ProposalHooks) AfterProposalSubmission(ctx context.Context, proposalID uint64) error {
+	if !h.active(sdk.UnwrapSDKContext(ctx)) {
+		return nil
+	}
 	proposal, err := h.keeper.Proposals.Get(ctx, proposalID)
 	if err != nil {
 		return err

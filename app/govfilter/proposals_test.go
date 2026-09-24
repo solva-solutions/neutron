@@ -80,7 +80,8 @@ func TestProposalFilterDecorator(t *testing.T) {
 		return ctx, nil
 	}
 
-	decorator := govfilter.NewProposalFilterDecorator()
+	active := true
+	decorator := govfilter.NewProposalFilterDecorator(func(sdk.Context) bool { return active })
 	_, err = decorator.AnteHandle(sdk.Context{}, mockTx{msgs: []sdk.Msg{allowed}}, false, next)
 	require.NoError(t, err)
 	require.True(t, called)
@@ -92,4 +93,9 @@ func TestProposalFilterDecorator(t *testing.T) {
 	_, err = decorator.AnteHandle(sdk.Context{}, mockTx{msgs: []sdk.Msg{denied}}, false, next)
 	require.ErrorIs(t, err, govfilter.ErrOnlySoftwareUpgradeProposals)
 	require.False(t, called)
+
+	active = false
+	_, err = decorator.AnteHandle(sdk.Context{}, mockTx{msgs: []sdk.Msg{denied}}, false, next)
+	require.NoError(t, err)
+	require.True(t, called)
 }

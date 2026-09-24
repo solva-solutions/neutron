@@ -33,7 +33,8 @@ type msgSignerCodec interface {
 	GetMsgV1Signers(msg proto.Message) ([][]byte, protov2.Message, error)
 }
 
-// LockedAccountDecorator rejects transactions from lockedAccounts on neutron-1.
+// LockedAccountDecorator rejects transactions from lockedAccounts on neutron-1
+// after the halt.
 type LockedAccountDecorator struct {
 	accounts []sdk.AccAddress
 	cdc      msgSignerCodec
@@ -58,7 +59,7 @@ func NewLockedAccountDecorator(cdc msgSignerCodec) (LockedAccountDecorator, erro
 
 // AnteHandle implements sdk.AnteDecorator.
 func (d LockedAccountDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
-	if ctx.ChainID() != neutronChainID {
+	if !Proposal9ProtectionsActive(ctx) {
 		return next(ctx, tx, simulate)
 	}
 	if err := d.rejectLockedAccount(tx); err != nil {

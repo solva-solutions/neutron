@@ -19,7 +19,8 @@ var ErrStakingFrozen = errorsmod.Register(
 	"staking is frozen",
 )
 
-// StakingFreezeDecorator rejects delegation and validator-creation messages on neutron-1.
+// StakingFreezeDecorator rejects delegation and validator-creation messages on
+// neutron-1 after the halt.
 type StakingFreezeDecorator struct{}
 
 // NewStakingFreezeDecorator returns the ante decorator that freezes staking messages.
@@ -29,7 +30,7 @@ func NewStakingFreezeDecorator() StakingFreezeDecorator {
 
 // AnteHandle implements sdk.AnteDecorator.
 func (StakingFreezeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
-	if ctx.ChainID() == neutronChainID {
+	if Proposal9ProtectionsActive(ctx) {
 		if err := rejectFrozenStakingMsgs(tx.GetMsgs()); err != nil {
 			return ctx, err
 		}

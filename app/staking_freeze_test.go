@@ -17,8 +17,8 @@ import (
 
 func TestStakingFreezeDecorator(t *testing.T) {
 	decorator := app.NewStakingFreezeDecorator()
-	neutronCtx := sdk.Context{}.WithChainID("neutron-1")
-	otherChain := sdk.Context{}.WithChainID("testing")
+	neutronCtx := sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(61635574)
+	otherChain := sdk.Context{}.WithChainID("testing").WithBlockHeight(61635574)
 	next := func(ctx sdk.Context, _ sdk.Tx, _ bool) (sdk.Context, error) {
 		return ctx, nil
 	}
@@ -40,6 +40,9 @@ func TestStakingFreezeDecorator(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = decorator.AnteHandle(otherChain, freezeTx{msgs: []sdk.Msg{delegate}}, false, next)
+	require.NoError(t, err)
+
+	_, err = decorator.AnteHandle(neutronCtx.WithBlockHeight(61635573), freezeTx{msgs: []sdk.Msg{delegate}}, false, next)
 	require.NoError(t, err)
 
 	undelegate := &stakingtypes.MsgUndelegate{

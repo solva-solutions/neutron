@@ -33,8 +33,22 @@ func TestLockedAccountDecorator(t *testing.T) {
 		Amount:      sdk.NewCoins(sdk.NewInt64Coin("untrn", 1)),
 	}
 
-	neutronCtx := sdk.Context{}.WithChainID("neutron-1")
-	otherChain := sdk.Context{}.WithChainID("testing")
+	neutronCtx := sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(61635574)
+	otherChain := sdk.Context{}.WithChainID("testing").WithBlockHeight(61635574)
+
+	t.Run("replayed block before the halt", func(t *testing.T) {
+		_, err := decorator.AnteHandle(neutronCtx.WithBlockHeight(61635573), lockTx{msgs: []sdk.Msg{send}, signers: [][]byte{attacker}}, false, func(ctx sdk.Context, _ sdk.Tx, _ bool) (sdk.Context, error) {
+			return ctx, nil
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("check tx after restart", func(t *testing.T) {
+		_, err := decorator.AnteHandle(neutronCtx.WithBlockHeight(0).WithIsCheckTx(true), lockTx{msgs: []sdk.Msg{send}, signers: [][]byte{attacker}}, false, func(ctx sdk.Context, _ sdk.Tx, _ bool) (sdk.Context, error) {
+			return ctx, nil
+		})
+		require.ErrorIs(t, err, app.ErrAccountLocked)
+	})
 
 	t.Run("second locked account", func(t *testing.T) {
 		second := mustAccAddress(t, "neutron1ekgfga6vv4zdrrjn3dux6f62fuzektfndgaehm")

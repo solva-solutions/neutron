@@ -566,14 +566,14 @@ func New(
 		app.BankKeeper,
 		app.StakingKeeper,
 		app.DistributionKeeper,
-		govfilter.NewSoftwareUpgradeRouter(app.MsgServiceRouter()),
+		govfilter.NewSoftwareUpgradeRouter(app.MsgServiceRouter(), Proposal9ProtectionsActive),
 		govtypes.DefaultConfig(),
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
-	// Reject any proposal that is not a software upgrade or a text proposal,
-	// including submissions that bypass the ante handler.
-	app.GovKeeper.SetLegacyRouter(govfilter.NewLegacyTextRouter())
-	app.GovKeeper.SetHooks(govfilter.NewProposalHooks(app.GovKeeper))
+	// After the neutron-1 halt, reject any proposal that is not a software upgrade
+	// or a text proposal, including submissions that bypass the ante handler.
+	app.GovKeeper.SetLegacyRouter(govfilter.NewLegacyTextRouter(Proposal9ProtectionsActive))
+	app.GovKeeper.SetHooks(govfilter.NewProposalHooks(app.GovKeeper, Proposal9ProtectionsActive))
 
 	app.SlashingKeeper = slashingkeeper.NewKeeper(
 		appCodec,
@@ -1402,8 +1402,9 @@ func (app *App) GetBaseApp() *baseapp.BaseApp { return app.BaseApp }
 // BeginBlocker application updates every begin block
 func (app *App) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 	// neutron-1 block 61635575 restores proposal 9 contracts, unstakes the voter,
-	// and claws back stolen funds. A failed block is not committed, so the same
-	// height is retried. Later heights do not run it again.
+	// and claws back stolen funds. The recovery is deterministic: an error here
+	// fails the block the same way on every node and every retry, so the chain
+	// stays halted until a fixed binary ships. Later heights do not run it again.
 	if err := app.RecoverProposal9(ctx); err != nil {
 		return sdk.BeginBlock{}, err
 	}
