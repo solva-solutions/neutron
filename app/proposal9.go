@@ -55,7 +55,6 @@ func (app *App) RecoverProposal9(ctx sdk.Context) error {
 		ctx.KVStore(app.GetKey(wasmtypes.StoreKey)),
 		proposal9Contracts,
 		attackerAddress,
-		govModuleAdmin,
 	); err != nil {
 		return err
 	}
