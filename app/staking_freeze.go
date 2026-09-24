@@ -78,11 +78,13 @@ func isFrozenStakingMsg(msg sdk.Msg) bool {
 	}
 }
 
-// FreezeValidatorUpdates drops Tendermint voting-power changes on neutron-1 except
-// in the proposal 9 recovery block. That block applies the POSTHUMAN unstake.
-// Staking has already written its power index; only this returned set reaches Tendermint.
+// FreezeValidatorUpdates drops Tendermint voting-power changes on neutron-1 after
+// the proposal 9 recovery block. Every earlier block, including the recovery
+// block with the POSTHUMAN unstake, keeps its updates, so the Tendermint set stays
+// equal to the staking set as of the end of block 61635575. Staking has already
+// written its power index; only this returned set reaches Tendermint.
 func FreezeValidatorUpdates(ctx sdk.Context, updates []abci.ValidatorUpdate) []abci.ValidatorUpdate {
-	if ctx.ChainID() == neutronChainID && ctx.BlockHeight() != proposal9RecoveryHeight {
+	if ctx.ChainID() == neutronChainID && ctx.BlockHeight() > proposal9RecoveryHeight {
 		return nil
 	}
 	return updates

@@ -1417,7 +1417,7 @@ func (app *App) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 	if err != nil {
 		return endBlock, err
 	}
-	// Keep the validator set fixed except for the POSTHUMAN unstake in block 61635575.
+	// Keep the validator set fixed after the POSTHUMAN unstake in block 61635575.
 	endBlock.ValidatorUpdates = FreezeValidatorUpdates(ctx, endBlock.ValidatorUpdates)
 	return endBlock, nil
 }

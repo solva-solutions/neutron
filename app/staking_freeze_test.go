@@ -58,9 +58,12 @@ func TestStakingFreezeDecorator(t *testing.T) {
 func TestFreezeValidatorUpdates(t *testing.T) {
 	updates := []abci.ValidatorUpdate{{}}
 
-	require.Nil(t, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(61635574), updates))
+	// Blocks up to the recovery block keep their validator updates.
+	for _, height := range []int64{1, 61635573, 61635574, 61635575} {
+		require.Equal(t, updates, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(height), updates))
+	}
 	require.Nil(t, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(61635576), updates))
-	require.Equal(t, updates, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(61635575), updates))
+	require.Nil(t, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(70000000), updates))
 	require.Equal(t, updates, app.FreezeValidatorUpdates(sdk.Context{}.WithChainID("testing").WithBlockHeight(1), updates))
 }
 
