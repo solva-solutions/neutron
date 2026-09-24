@@ -41,9 +41,9 @@ func Proposal9ProtectionsActive(ctx sdk.Context) bool {
 	return ctx.BlockHeight() > proposal9HaltHeight || ctx.IsCheckTx()
 }
 
-// RecoverProposal9 restores proposal 9 contract admins and code IDs, unstakes the
-// account that passed the proposal, and seizes the stolen funds. It changes
-// state only in neutron-1 block 61635575.
+// RecoverProposal9 restores proposal 9 contract admins and code IDs, disables the
+// undelegations manager, unstakes the account that passed the proposal, and
+// seizes the stolen funds. It changes state only in neutron-1 block 61635575.
 func (app *App) RecoverProposal9(ctx sdk.Context) error {
 	if !proposal9RecoveryDue(ctx) {
 		return nil
@@ -56,6 +56,9 @@ func (app *App) RecoverProposal9(ctx sdk.Context) error {
 		proposal9Contracts,
 		attackerAddress,
 	); err != nil {
+		return err
+	}
+	if err := DisableUndelegationsManager(ctx, &app.CronKeeper, &app.WasmKeeper); err != nil {
 		return err
 	}
 	if err := UnstakeProposal9Voter(ctx, app.StakingKeeper, app.BankKeeper); err != nil {
