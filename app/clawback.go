@@ -39,9 +39,9 @@ var clawbackTransfers = []struct {
 	{attackerAddress2, mustCoin("untrn", "19385160546")},
 }
 
-// ClawbackStolenFunds moves the stolen amounts to clawbackRecipient.
-// Each denom is seized only when the spendable balance covers that amount, so the
-// attacker's own NTRN stays put.
+// ClawbackStolenFunds moves the stolen amounts to clawbackRecipient. Only the
+// listed amounts move, so the attacker's own NTRN stays put. A spendable balance
+// below a listed amount returns an error, which fails the recovery block.
 // Balances are updated directly so token-factory before-send hooks cannot block the seizure
 // or run during BeginBlock.
 func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.AccountKeeper) error {
@@ -68,7 +68,7 @@ func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.
 func clawCoin(ctx sdk.Context, bank bankkeeper.BaseKeeper, from, to sdk.AccAddress, coin sdk.Coin) error {
 	spendable := bank.SpendableCoin(ctx, from, coin.Denom)
 	if spendable.Amount.LT(coin.Amount) {
-		return nil
+		return fmt.Errorf("claw %s from %s: spendable balance is %s", coin, from, spendable)
 	}
 
 	fromBalance := bank.GetBalance(ctx, from, coin.Denom)
