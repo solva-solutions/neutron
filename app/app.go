@@ -478,6 +478,8 @@ func New(
 	bApp.SetCommitMultiStoreTracer(traceStore)
 	bApp.SetVersion(version.Version)
 	bApp.SetInterfaceRegistry(interfaceRegistry)
+	// Must be set before any module registers its msg services.
+	bApp.MsgServiceRouter().SetCircuit(StakingFreezeCircuit{})
 
 	keys := storetypes.NewKVStoreKeys(
 		authzkeeper.StoreKey, authtypes.StoreKey, banktypes.StoreKey, slashingtypes.StoreKey,

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
@@ -9,6 +10,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authz "github.com/cosmos/cosmos-sdk/x/authz"
 	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
@@ -19,8 +21,8 @@ var ErrStakingFrozen = errorsmod.Register(
 	"staking is frozen",
 )
 
-// StakingFreezeDecorator rejects delegation and validator-creation messages on
-// neutron-1 after the halt.
+// StakingFreezeDecorator rejects delegation, redelegation, validator-creation,
+// and unjail messages on neutron-1 after the halt.
 type StakingFreezeDecorator struct{}
 
 // NewStakingFreezeDecorator returns the ante decorator that freezes staking messages.
@@ -65,17 +67,42 @@ func rejectFrozenStakingMsgs(msgs []sdk.Msg) error {
 	return nil
 }
 
+// frozenStakingMsgs are the message types rejected while staking is frozen.
+// MsgUndelegate stays allowed so holders can exit.
+var frozenStakingMsgs = map[string]struct{}{
+	sdk.MsgTypeURL(&stakingtypes.MsgDelegate{}):                  {},
+	sdk.MsgTypeURL(&stakingtypes.MsgBeginRedelegate{}):           {},
+	sdk.MsgTypeURL(&stakingtypes.MsgCancelUnbondingDelegation{}): {},
+	sdk.MsgTypeURL(&stakingtypes.MsgCreateValidator{}):           {},
+	sdk.MsgTypeURL(&slashingtypes.MsgUnjail{}):                   {},
+}
+
 func isFrozenStakingMsg(msg sdk.Msg) bool {
-	switch msg.(type) {
-	case *stakingtypes.MsgDelegate,
-		*stakingtypes.MsgUndelegate,
-		*stakingtypes.MsgBeginRedelegate,
-		*stakingtypes.MsgCancelUnbondingDelegation,
-		*stakingtypes.MsgCreateValidator:
-		return true
-	default:
-		return false
+	_, frozen := frozenStakingMsgs[sdk.MsgTypeURL(msg)]
+	return frozen
+}
+
+// StakingFreezeCircuit is the message-router circuit breaker for the staking
+// freeze. The ante decorator only sees transaction messages; this also rejects
+// frozen messages dispatched by contracts, interchain accounts, authz, and gov.
+type StakingFreezeCircuit struct{}
+
+// IsAllowed implements baseapp.CircuitBreaker.
+func (StakingFreezeCircuit) IsAllowed(ctx context.Context, typeURL string) (bool, error) {
+	if _, frozen := frozenStakingMsgs[typeURL]; !frozen {
+		return true, nil
 	}
+	sdkCtx, ok := ctx.(sdk.Context)
+	if !ok {
+		sdkCtx, ok = ctx.Value(sdk.SdkContextKey).(sdk.Context)
+	}
+	if !ok {
+		return false, ErrStakingFrozen.Wrapf("%s: no block context", typeURL)
+	}
+	if Proposal9ProtectionsActive(sdkCtx) {
+		return false, ErrStakingFrozen.Wrapf("%s", typeURL)
+	}
+	return true, nil
 }
 
 // FreezeValidatorUpdates drops Tendermint voting-power changes on neutron-1 after

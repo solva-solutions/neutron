@@ -4,15 +4,18 @@ import (
 	"testing"
 
 	abci "github.com/cometbft/cometbft/abci/types"
+	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/stretchr/testify/require"
 	protov2 "google.golang.org/protobuf/proto"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authz "github.com/cosmos/cosmos-sdk/x/authz"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/solva-solutions/neutron/v11/app"
+	"github.com/solva-solutions/neutron/v11/testutil"
 )
 
 func TestStakingFreezeDecorator(t *testing.T) {
@@ -45,14 +48,79 @@ func TestStakingFreezeDecorator(t *testing.T) {
 	_, err = decorator.AnteHandle(neutronCtx.WithBlockHeight(61635573), freezeTx{msgs: []sdk.Msg{delegate}}, false, next)
 	require.NoError(t, err)
 
+	// Holders can still undelegate.
 	undelegate := &stakingtypes.MsgUndelegate{
-		DelegatorAddress: "neutron1ekgfga6vv4zdrrjn3dux6f62fuzektfndgaehm",
+		DelegatorAddress: "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap",
 		ValidatorAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
 		Amount:           sdk.NewInt64Coin("untrn", 1),
 	}
-	exec := authz.NewMsgExec(mustAccAddress(t, "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap"), []sdk.Msg{undelegate})
+	_, err = decorator.AnteHandle(neutronCtx, freezeTx{msgs: []sdk.Msg{undelegate}}, false, next)
+	require.NoError(t, err)
+
+	unjail := &slashingtypes.MsgUnjail{ValidatorAddr: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa"}
+	_, err = decorator.AnteHandle(neutronCtx, freezeTx{msgs: []sdk.Msg{unjail}}, false, next)
+	require.ErrorIs(t, err, app.ErrStakingFrozen)
+
+	redelegate := &stakingtypes.MsgBeginRedelegate{
+		DelegatorAddress:    "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap",
+		ValidatorSrcAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
+		ValidatorDstAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
+		Amount:              sdk.NewInt64Coin("untrn", 1),
+	}
+	exec := authz.NewMsgExec(mustAccAddress(t, "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap"), []sdk.Msg{redelegate})
 	_, err = decorator.AnteHandle(neutronCtx, freezeTx{msgs: []sdk.Msg{&exec}}, false, next)
 	require.ErrorIs(t, err, app.ErrStakingFrozen)
+}
+
+func TestStakingFreezeCircuit(t *testing.T) {
+	circuit := app.StakingFreezeCircuit{}
+	after := sdk.Context{}.WithChainID("neutron-1").WithBlockHeight(61635574)
+
+	for _, msg := range []sdk.Msg{
+		&stakingtypes.MsgDelegate{},
+		&stakingtypes.MsgBeginRedelegate{},
+		&stakingtypes.MsgCancelUnbondingDelegation{},
+		&stakingtypes.MsgCreateValidator{},
+		&slashingtypes.MsgUnjail{},
+	} {
+		typeURL := sdk.MsgTypeURL(msg)
+		allowed, err := circuit.IsAllowed(after, typeURL)
+		require.False(t, allowed, typeURL)
+		require.ErrorIs(t, err, app.ErrStakingFrozen)
+
+		// Replayed blocks and other chains are not frozen.
+		for _, ctx := range []sdk.Context{after.WithBlockHeight(61635573), after.WithChainID("testing")} {
+			allowed, err = circuit.IsAllowed(ctx, typeURL)
+			require.NoError(t, err)
+			require.True(t, allowed, typeURL)
+		}
+	}
+
+	for _, msg := range []sdk.Msg{&stakingtypes.MsgUndelegate{}, &banktypes.MsgSend{}} {
+		allowed, err := circuit.IsAllowed(after, sdk.MsgTypeURL(msg))
+		require.NoError(t, err)
+		require.True(t, allowed)
+	}
+}
+
+// Contracts, interchain accounts, and authz dispatch through the message router,
+// not the ante handler.
+func TestStakingFreezeRouter(t *testing.T) {
+	neutronApp := testutil.Setup(t).(*app.App)
+	ctx := neutronApp.NewUncachedContext(false, cmtproto.Header{}).WithChainID("neutron-1").WithBlockHeight(61635576)
+
+	delegate := &stakingtypes.MsgDelegate{
+		DelegatorAddress: "neutron1eeyfuy3xv2xf35aa3gctyaajvvtj2z7gkwdjap",
+		ValidatorAddress: "neutronvaloper1md0k6m8y58w8u98x82kjah7r5zcajw7c5v5ypa",
+		Amount:           sdk.NewInt64Coin("untrn", 1),
+	}
+	handler := neutronApp.MsgServiceRouter().Handler(delegate)
+	require.NotNil(t, handler)
+	_, err := handler(ctx, delegate)
+	require.ErrorIs(t, err, app.ErrStakingFrozen)
+
+	_, err = handler(ctx.WithChainID("testing"), delegate)
+	require.NotErrorIs(t, err, app.ErrStakingFrozen)
 }
 
 func TestFreezeValidatorUpdates(t *testing.T) {
