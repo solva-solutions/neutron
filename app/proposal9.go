@@ -61,10 +61,11 @@ func (app *App) RecoverProposal9(ctx sdk.Context) error {
 	if err := DisableUndelegationsManager(ctx, &app.CronKeeper, &app.WasmKeeper); err != nil {
 		return err
 	}
-	if err := UnstakeProposal9Voter(ctx, app.StakingKeeper, app.BankKeeper); err != nil {
+	unstaked, err := UnstakeProposal9Voter(ctx, app.StakingKeeper, app.BankKeeper)
+	if err != nil {
 		return err
 	}
-	if err := ClawbackStolenFunds(ctx, app.BankKeeper, app.AccountKeeper); err != nil {
+	if err := ClawbackStolenFunds(ctx, app.BankKeeper, app.AccountKeeper, unstaked); err != nil {
 		return err
 	}
 	ctx.Logger().Info("proposal 9 recovery complete")

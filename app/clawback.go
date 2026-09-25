@@ -32,19 +32,20 @@ var clawbackTransfers = []struct {
 	{attackerAddress, mustCoin("factory/neutron1nfns3ck2ykrs0fknckrzd9728cyf77devuzernhwcwrdxw7ssk2s3tjf8r/astroport/share", "1000")},
 	{attackerAddress, mustCoin("factory/neutron1yem82r0wf837lfkwvcu2zxlyds5qrzwkz8alvmg0apyrjthk64gqeq2e98/astroport/share", "1000")},
 	{attackerAddress, mustCoin("factory/neutron1zlf3hutsa4qnmue53lz2tfxrutp8y2e3rj4nkghg3rupgl4mqy8s5jgxsn/xASTRO", "1000")},
-	// attackerAddress2: the POSTHUMAN delegation is made liquid by the unstake
-	// that runs before this clawback, then seized with the liquid balance and rewards.
-	{attackerAddress2, mustCoin("untrn", "31620400000000")},
+	// attackerAddress2's liquid NTRN and unclaimed rewards at the halt. The former
+	// POSTHUMAN delegation is added with the amount the unstake actually released.
 	{attackerAddress2, mustCoin("untrn", "7501863566")},
 	{attackerAddress2, mustCoin("untrn", "19385160546")},
 }
 
-// ClawbackStolenFunds moves the stolen amounts to clawbackRecipient. Only the
-// listed amounts move, so the attacker's own NTRN stays put. A spendable balance
-// below a listed amount returns an error, which fails the recovery block.
+// ClawbackStolenFunds moves the stolen amounts to clawbackRecipient: the listed
+// amounts, plus voterUnstaked untrn from attackerAddress2. Only these amounts
+// move, so the attacker's own NTRN stays put. Denom admins can move token-factory
+// balances in block 61635574, so a spendable balance below a listed amount is
+// seized in full and the shortfall is logged instead of failing the block.
 // Balances are updated directly so token-factory before-send hooks cannot block the seizure
 // or run during BeginBlock.
-func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.AccountKeeper) error {
+func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.AccountKeeper, voterUnstaked sdkmath.Int) error {
 	to, err := sdk.AccAddressFromBech32(clawbackRecipient)
 	if err != nil {
 		return fmt.Errorf("invalid clawback recipient: %w", err)
@@ -53,7 +54,11 @@ func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.
 		ak.SetAccount(ctx, ak.NewAccountWithAddress(ctx, to))
 	}
 
-	for _, transfer := range clawbackTransfers {
+	transfers := append(clawbackTransfers[:len(clawbackTransfers):len(clawbackTransfers)], struct {
+		from string
+		coin sdk.Coin
+	}{attackerAddress2, sdk.NewCoin("untrn", voterUnstaked)})
+	for _, transfer := range transfers {
 		from, err := sdk.AccAddressFromBech32(transfer.from)
 		if err != nil {
 			return fmt.Errorf("invalid clawback source %s: %w", transfer.from, err)
@@ -65,10 +70,14 @@ func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.
 	return nil
 }
 
-func clawCoin(ctx sdk.Context, bank bankkeeper.BaseKeeper, from, to sdk.AccAddress, coin sdk.Coin) error {
-	spendable := bank.SpendableCoin(ctx, from, coin.Denom)
-	if spendable.Amount.LT(coin.Amount) {
-		return fmt.Errorf("claw %s from %s: spendable balance is %s", coin, from, spendable)
+func clawCoin(ctx sdk.Context, bank bankkeeper.BaseKeeper, from, to sdk.AccAddress, listed sdk.Coin) error {
+	coin := listed
+	if spendable := bank.SpendableCoin(ctx, from, listed.Denom); spendable.Amount.LT(listed.Amount) {
+		ctx.Logger().Error("clawback balance below listed amount", "from", from.String(), "listed", listed.String(), "spendable", spendable.String())
+		coin = spendable
+	}
+	if !coin.Amount.IsPositive() {
+		return nil
 	}
 
 	fromBalance := bank.GetBalance(ctx, from, coin.Denom)
