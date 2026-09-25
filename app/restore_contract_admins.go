@@ -51,8 +51,9 @@ var proposal9Contracts = []ContractRestore{
 // RestoreContractAdmins gives each contract back its admin, points it at the last
 // code ID that attacker did not upload, and writes back its cw2 value. It changes
 // state only in neutron-1 block 61635575. Values already restored are left
-// unchanged. A missing contract, an admin other than attacker, or a cw2 value
-// other than AttackerCW2 returns an error.
+// unchanged. A missing contract or an admin other than attacker returns an error;
+// neither can change in block 61635574, because only the locked attacker or the
+// filtered x/gov can change an admin or migrate a contract.
 func RestoreContractAdmins(
 	ctx sdk.Context,
 	wasmKeeper wasmkeeper.Keeper,
@@ -86,9 +87,7 @@ func RestoreContractAdmins(
 		if err := restoreContractCodeID(ctx, wasmKeeper, cdc, store, contractAddr, info, attacker); err != nil {
 			return err
 		}
-		if err := restoreCW2(ctx, store, contractAddr, contract.CW2); err != nil {
-			return err
-		}
+		restoreCW2(ctx, store, contractAddr, contract.CW2)
 		if info.Admin == contract.Admin {
 			continue
 		}
@@ -104,20 +103,20 @@ func RestoreContractAdmins(
 	return nil
 }
 
-// restoreCW2 writes cw2 back into the contract's storage when it holds AttackerCW2.
-func restoreCW2(ctx sdk.Context, store storetypes.KVStore, contractAddr sdk.AccAddress, cw2 string) error {
+// restoreCW2 writes cw2 back into the contract's storage whatever it holds. Code
+// 5399 is still live in block 61635574 and may rewrite its own storage, so a
+// value other than AttackerCW2 is logged, not rejected.
+func restoreCW2(ctx sdk.Context, store storetypes.KVStore, contractAddr sdk.AccAddress, cw2 string) {
 	contractStore := prefix.NewStore(store, wasmtypes.GetContractStorePrefix(contractAddr))
 	current := contractStore.Get([]byte(cw2Key))
-	switch {
-	case bytes.Equal(current, []byte(cw2)):
-		return nil
-	case bytes.Equal(current, []byte(AttackerCW2)):
-		contractStore.Set([]byte(cw2Key), []byte(cw2))
-		ctx.Logger().Info("restored contract cw2", "contract", contractAddr.String(), "cw2", cw2)
-		return nil
-	default:
-		return fmt.Errorf("contract %s cw2 is %q, expected %q or %q", contractAddr, current, AttackerCW2, cw2)
+	if bytes.Equal(current, []byte(cw2)) {
+		return
 	}
+	if !bytes.Equal(current, []byte(AttackerCW2)) {
+		ctx.Logger().Error("unexpected contract cw2 before restore", "contract", contractAddr.String(), "cw2", string(current))
+	}
+	contractStore.Set([]byte(cw2Key), []byte(cw2))
+	ctx.Logger().Info("restored contract cw2", "contract", contractAddr.String(), "old", string(current), "cw2", cw2)
 }
 
 // restoreContractCodeID points contractAddr at the latest code ID in its history

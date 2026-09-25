@@ -76,10 +76,12 @@ func (suite *RestoreAdminTestSuite) TestRestoreContractAdmins() {
 	err := restoreContracts(ctx, neutronApp, []app.ContractRestore{{otherAdmin.String(), satellite, pairCW2}}, badAdmin.String())
 	require.ErrorContains(t, err, "admin is")
 
+	// Code 5399 can rewrite its own storage in block 61635574; cw2 is overwritten anyway.
 	otherCW2 := instantiateWithAdmin(t, neutronApp, ctx, codeID, creator, badAdmin, "other-cw2")
 	setCW2(ctx, neutronApp, otherCW2, `{"contract":"something-else","version":"1.0.0"}`)
-	err = restoreContracts(ctx, neutronApp, []app.ContractRestore{{otherCW2.String(), satellite, pairCW2}}, badAdmin.String())
-	require.ErrorContains(t, err, "cw2")
+	require.NoError(t, restoreContracts(ctx, neutronApp, []app.ContractRestore{{otherCW2.String(), satellite, pairCW2}}, badAdmin.String()))
+	require.Equal(t, pairCW2, getCW2(ctx, neutronApp, otherCW2))
+	require.Equal(t, satellite, neutronApp.WasmKeeper.GetContractInfo(ctx, otherCW2).Admin)
 
 	missing := sdk.AccAddress(make([]byte, 20)).String()
 	err = restoreContracts(ctx, neutronApp, []app.ContractRestore{{missing, satellite, pairCW2}}, badAdmin.String())
