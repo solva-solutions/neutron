@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
               -X github.com/cosmos/cosmos-sdk/version.Version=${GIT_VERSION} \
               -X github.com/cosmos/cosmos-sdk/version.Commit=${GIT_COMMIT} \
               -X github.com/cosmos/cosmos-sdk/version.BuildTags='${BUILD_TAGS}' \
-              -X github.com/neutron-org/neutron/app.EnableSpecificProposals=${ENABLED_PROPOSALS} \
+              -X github.com/solva-solutions/neutron/v11/app.EnableSpecificProposals=${ENABLED_PROPOSALS} \
               -w -s -linkmode=external -extldflags '-Wl,-z,muldefs -static'" \
       -trimpath \
       -o /neutron/build/neutrond \

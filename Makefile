@@ -14,7 +14,7 @@ BUILDDIR ?= $(CURDIR)/build
 # for dockerized protobuf tools
 DOCKER := $(shell which docker)
 BUILDDIR ?= $(CURDIR)/build
-HTTPS_GIT := https://github.com/neutron-org/neutron.git
+HTTPS_GIT := https://github.com/solva-solutions/neutron.git
 
 GO_SYSTEM_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1-2)
 REQUIRE_GO_VERSION = $(GO_VERSION)
@@ -214,7 +214,7 @@ lint:
 format: lint
 	@go install mvdan.cc/gofumpt@latest
 	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -path "./client/docs/statik/statik.go" -not -path "./tests/mocks/*" -not -name "*.pb.go" -not -name "*.pb.gw.go" -not -name "*.pulsar.go" -not -path "./crypto/keys/secp256k1/*" | xargs -I % sh -c 'gofumpt -w -l % && goimports -w -local github.com/neutron-org %'
+	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -path "./client/docs/statik/statik.go" -not -path "./tests/mocks/*" -not -name "*.pb.go" -not -name "*.pb.gw.go" -not -name "*.pulsar.go" -not -path "./crypto/keys/secp256k1/*" | xargs -I % sh -c 'gofumpt -w -l % && goimports -w -local github.com/solva-solutions %'
 
 .PHONY: format
 
