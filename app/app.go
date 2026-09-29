@@ -14,6 +14,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/gov"
 	"github.com/cosmos/cosmos-sdk/x/mint"
 
+	govfilter "github.com/solva-solutions/neutron/v11/app/govfilter"
 	v10_0_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v10.0.0"
 	v10_1_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v10.1.0"
 	v10_2_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v10.2.0"
@@ -21,6 +22,7 @@ import (
 	v11 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.0.0"
 	v11_1_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.1.0"
 	v11_2_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.2.0"
+	v11_3_0 "github.com/solva-solutions/neutron/v11/app/upgrades/v11.3.0"
 	v700 "github.com/solva-solutions/neutron/v11/app/upgrades/v7.0.0"
 	v800 "github.com/solva-solutions/neutron/v11/app/upgrades/v8.0.0"
 	v800_rc0 "github.com/solva-solutions/neutron/v11/app/upgrades/v8.0.0-rc0"
@@ -251,6 +253,7 @@ var (
 		v11.Upgrade,
 		v11_1_0.Upgrade,
 		v11_2_0.Upgrade,
+		v11_3_0.Upgrade,
 	}
 
 	// DefaultNodeHome default home directories for the application daemon
@@ -475,6 +478,8 @@ func New(
 	bApp.SetCommitMultiStoreTracer(traceStore)
 	bApp.SetVersion(version.Version)
 	bApp.SetInterfaceRegistry(interfaceRegistry)
+	// Must be set before any module registers its msg services.
+	bApp.MsgServiceRouter().SetCircuit(StakingFreezeCircuit{})
 
 	keys := storetypes.NewKVStoreKeys(
 		authzkeeper.StoreKey, authtypes.StoreKey, banktypes.StoreKey, slashingtypes.StoreKey,
@@ -562,10 +567,15 @@ func New(
 		app.AccountKeeper,
 		app.BankKeeper,
 		app.StakingKeeper,
-		app.DistributionKeeper, app.MsgServiceRouter(),
+		app.DistributionKeeper,
+		govfilter.NewSoftwareUpgradeRouter(app.MsgServiceRouter(), Proposal9ProtectionsActive),
 		govtypes.DefaultConfig(),
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	// After the neutron-1 halt, reject any proposal that is not a software upgrade
+	// or a text proposal, including submissions that bypass the ante handler.
+	app.GovKeeper.SetLegacyRouter(govfilter.NewLegacyTextRouter(Proposal9ProtectionsActive))
+	app.GovKeeper.SetHooks(govfilter.NewProposalHooks(app.GovKeeper, Proposal9ProtectionsActive))
 
 	app.SlashingKeeper = slashingkeeper.NewKeeper(
 		appCodec,
@@ -1103,6 +1113,7 @@ func New(
 			NodeConfig:            &nodeConfig,
 			TXCounterStoreService: runtime.NewKVStoreService(keys[wasmtypes.StoreKey]),
 			FeeMarketKeeper:       app.FeeMarkerKeeper,
+			Codec:                 app.appCodec,
 		},
 		app.Logger(),
 	)
@@ -1392,6 +1403,13 @@ func (app *App) GetBaseApp() *baseapp.BaseApp { return app.BaseApp }
 
 // BeginBlocker application updates every begin block
 func (app *App) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	// neutron-1 block 61635575 restores proposal 9 contracts, unstakes the voter,
+	// and claws back stolen funds. The recovery is deterministic: an error here
+	// fails the block the same way on every node and every retry, so the chain
+	// stays halted until a fixed binary ships. Later heights do not run it again.
+	if err := app.RecoverProposal9(ctx); err != nil {
+		return sdk.BeginBlock{}, err
+	}
 	return app.mm.BeginBlock(ctx)
 }
 

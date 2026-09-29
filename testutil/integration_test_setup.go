@@ -50,7 +50,8 @@ func Setup(t *testing.T) ibctesting.TestingApp {
 
 	ibctesting.DefaultTestingAppInit = SetupTestingApp()
 
-	app := SetupWithGenesisValSet(t, valSet, []authtypes.GenesisAccount{acc}, "neutron-1", balance)
+	// Not neutron-1: block 61635575 on that chain ID runs the mainnet contract restore and clawback.
+	app := SetupWithGenesisValSet(t, valSet, []authtypes.GenesisAccount{acc}, "testing", balance)
 
 	return app
 }

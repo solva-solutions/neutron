@@ -6,6 +6,7 @@ import (
 	"cosmossdk.io/log"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	wasmTypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
@@ -14,6 +15,7 @@ import (
 	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
 	feemarketante "github.com/skip-mev/feemarket/x/feemarket/ante"
 
+	"github.com/solva-solutions/neutron/v11/app/govfilter"
 	globalfeeante "github.com/solva-solutions/neutron/v11/x/globalfee/ante"
 	globalfeekeeper "github.com/solva-solutions/neutron/v11/x/globalfee/keeper"
 )
@@ -30,6 +32,7 @@ type HandlerOptions struct {
 	NodeConfig            *wasmTypes.NodeConfig
 	TXCounterStoreService corestoretypes.KVStoreService
 	FeeMarketKeeper       feemarketante.FeeMarketKeeper
+	Codec                 codec.Codec
 }
 
 func NewAnteHandler(options HandlerOptions, _ log.Logger) (sdk.AnteHandler, error) {
@@ -52,6 +55,14 @@ func NewAnteHandler(options HandlerOptions, _ log.Logger) (sdk.AnteHandler, erro
 	if options.FeeMarketKeeper == nil {
 		return nil, errors.Wrap(sdkerrors.ErrLogic, "feemarket keeper is required for ante builder")
 	}
+	signerCodec, ok := options.Codec.(msgSignerCodec)
+	if !ok {
+		return nil, errors.Wrap(sdkerrors.ErrLogic, "codec is required to lock the attacker account")
+	}
+	accountLock, err := NewLockedAccountDecorator(signerCodec)
+	if err != nil {
+		return nil, err
+	}
 
 	sigGasConsumer := options.SigGasConsumer
 	if sigGasConsumer == nil {
@@ -64,6 +75,9 @@ func NewAnteHandler(options HandlerOptions, _ log.Logger) (sdk.AnteHandler, erro
 		wasmkeeper.NewCountTXDecorator(options.TXCounterStoreService),
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		ante.NewValidateBasicDecorator(),
+		govfilter.NewProposalFilterDecorator(Proposal9ProtectionsActive),
+		accountLock,
+		NewStakingFreezeDecorator(),
 		ante.NewTxTimeoutHeightDecorator(),
 		ante.NewValidateMemoDecorator(options.AccountKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
