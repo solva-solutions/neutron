@@ -16,7 +16,7 @@ require (
 	cosmossdk.io/x/tx v0.14.0
 	cosmossdk.io/x/upgrade v0.2.0
 	github.com/CosmWasm/wasmd v0.61.0
-	github.com/CosmWasm/wasmvm/v3 v3.0.8-rc.3
+	github.com/CosmWasm/wasmvm/v3 v3.0.8
 	github.com/cometbft/cometbft v0.38.21
 	github.com/cosmos/cosmos-db v1.1.3
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
@@ -240,7 +240,7 @@ require (
 
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/CosmWasm/wasmd => ../neutron-wasmd
+	github.com/CosmWasm/wasmd => github.com/solva-solutions/neutron-wasmd v0.61.15-neutron
 	github.com/btcsuite/btcd/btcec/v2 => github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/cosmos/cosmos-sdk => github.com/solva-solutions/neutron-cosmos-sdk v0.53.4-neutron
 	// explicitely replace iavl to v1.2.0 cause sometimes go mod tidy uses not right version
