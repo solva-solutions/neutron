@@ -21,8 +21,7 @@ concurrency:
 jobs:
   docker:
     name: Build Neutron Image
-    runs-on:
-      group: Neutron-Core
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       INPUT_TAG: ${{ github.event.inputs.tag }}
@@ -66,5 +65,5 @@ jobs:
         env:
           VERSION: ${{ env.VERSION }}
         run: |
-          docker tag neutron-amd64:latest "neutronorg/neutron:${VERSION}"
-          docker push "neutronorg/neutron:${VERSION}"
+          docker tag neutron-amd64:latest "solvasolutions/neutron:${VERSION}"
+          docker push "solvasolutions/neutron:${VERSION}"
