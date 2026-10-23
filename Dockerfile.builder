@@ -1,20 +1,20 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION="1.24"
+ARG GO_VERSION="1.25"
 ARG RUNNER_IMAGE="gcr.io/distroless/static"
 
 # --------------------------------------------------------
 # Builder
 # --------------------------------------------------------
 
-FROM golang:${GO_VERSION}-alpine3.20 as builder
+FROM golang:${GO_VERSION}-alpine3.24 AS builder
 
 ARG GIT_VERSION
 ARG GIT_COMMIT
 ARG BUILD_TAGS
 ARG ENABLED_PROPOSALS
 
-ENV GOTOOLCHAIN go1.24.10
+ENV GOTOOLCHAIN go1.25.10
 
 RUN apk add --no-cache \
     ca-certificates \
