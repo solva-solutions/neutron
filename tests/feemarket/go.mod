@@ -122,7 +122,7 @@ require (
 	github.com/go-kit/kit v0.13.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
@@ -245,11 +245,11 @@ require (
 	go.opentelemetry.io/contrib/detectors/gcp v1.44.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
-	go.opentelemetry.io/otel v1.44.0 // indirect
-	go.opentelemetry.io/otel/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	go.opentelemetry.io/otel v1.45.0 // indirect
+	go.opentelemetry.io/otel/metric v1.45.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.45.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.45.0 // indirect
+	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	go.uber.org/mock v0.5.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
@@ -288,8 +288,8 @@ require (
 )
 
 replace (
-	github.com/cosmos/cosmos-sdk => github.com/solva-solutions/neutron-cosmos-sdk v0.50.13-neutron.0.20251125163820-71ff8c91e59f
-	github.com/skip-mev/feemarket => github.com/solva-solutions/neutron-feemarket v0.0.0-20251208121040-765fc3366074
-	github.com/skip-mev/feemarket/tests/e2e => github.com/solva-solutions/neutron-feemarket/tests/e2e v0.0.0-20251208121040-765fc3366074
-	github.com/skip-mev/slinky => ../../../connect-neutron
+	github.com/cosmos/cosmos-sdk => github.com/solva-solutions/neutron-cosmos-sdk v0.53.4-neutron
+	github.com/skip-mev/feemarket => github.com/solva-solutions/neutron-feemarket v1.2.0
+	github.com/skip-mev/feemarket/tests/e2e => github.com/solva-solutions/neutron-feemarket/tests/e2e v0.0.0-20260202145927-f0e55c2ca74c
+	github.com/skip-mev/slinky => github.com/solva-solutions/neutron-connect v1.3.2
 )
