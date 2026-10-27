@@ -54,7 +54,7 @@ func ClawbackStolenFunds(ctx sdk.Context, bank bankkeeper.BaseKeeper, ak keeper.
 		ak.SetAccount(ctx, ak.NewAccountWithAddress(ctx, to))
 	}
 
-	transfers := append(clawbackTransfers[:len(clawbackTransfers):len(clawbackTransfers)], struct {
+	transfers := append(clawbackTransfers[:len(clawbackTransfers):len(clawbackTransfers)], struct { //nolint:gocritic // capped slice, append copies
 		from string
 		coin sdk.Coin
 	}{attackerAddress2, sdk.NewCoin("untrn", voterUnstaked)})

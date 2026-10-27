@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION="1.25"
+ARG GO_VERSION="1.26"
 ARG RUNNER_IMAGE="gcr.io/distroless/static"
 
 # --------------------------------------------------------
@@ -14,7 +14,7 @@ ARG GIT_COMMIT
 ARG BUILD_TAGS
 ARG ENABLED_PROPOSALS
 
-ENV GOTOOLCHAIN go1.25.10
+ENV GOTOOLCHAIN go1.26.10
 
 RUN apk add --no-cache \
     ca-certificates \

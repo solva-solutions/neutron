@@ -1,15 +1,18 @@
 package app_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
+	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/stretchr/testify/require"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
@@ -86,5 +89,44 @@ func TestGovRejectsNonSoftwareUpgradeProposals(t *testing.T) {
 		require.NoError(t, err)
 		_, err = handler(unrestricted, send)
 		require.NotErrorIs(t, err, govfilter.ErrOnlySoftwareUpgradeProposals)
+	}
+}
+
+func TestGovCanStoreWasmCode(t *testing.T) {
+	neutronApp := testutil.Setup(t).(*app.App)
+	base := neutronApp.NewUncachedContext(false, cmtproto.Header{Time: time.Now().UTC()})
+	ctx := base.WithChainID("neutron-1").WithBlockHeight(61635574)
+
+	govAddr := authtypes.NewModuleAddress(govtypes.ModuleName).String()
+	proposer := mustAccAddress(t, "neutron1dd25c4sshelrpfs0433apg24c5phrhk8l6n605")
+
+	// Same wasm params as neutron-1 after v11.4.0.
+	params := neutronApp.WasmKeeper.GetParams(ctx)
+	params.CodeUploadAccess = wasmtypes.AllowNobody
+	require.NoError(t, neutronApp.WasmKeeper.SetParams(ctx, params))
+
+	wasmCode, err := os.ReadFile("../x/tokenfactory/keeper/testdata/balance_tracker.wasm")
+	require.NoError(t, err)
+
+	store := &wasmtypes.MsgStoreCode{Sender: govAddr, WASMByteCode: wasmCode}
+	_, err = neutronApp.GovKeeper.SubmitProposal(ctx, []sdk.Msg{store}, "", "store", "upload a contract", proposer, false)
+	require.NoError(t, err)
+
+	// A user cannot store code directly, governance can through its router.
+	userStore := &wasmtypes.MsgStoreCode{Sender: proposer.String(), WASMByteCode: wasmCode}
+	_, err = wasmkeeper.NewMsgServerImpl(&neutronApp.WasmKeeper).StoreCode(ctx, userStore)
+	require.ErrorIs(t, err, sdkerrors.ErrUnauthorized)
+
+	handler := neutronApp.GovKeeper.Router().Handler(store)
+	require.NotNil(t, handler)
+	_, err = handler(ctx, store)
+	require.NoError(t, err)
+
+	// Other wasm messages remain blocked, alone or mixed with a store code message.
+	updateAdmin := &wasmtypes.MsgUpdateAdmin{Sender: govAddr, NewAdmin: proposer.String(), Contract: "neutron1nfns3ck2ykrs0fknckrzd9728cyf77devuzernhwcwrdxw7ssk2s3tjf8r"}
+	migrate := &wasmtypes.MsgMigrateContract{Sender: govAddr, Contract: updateAdmin.Contract, CodeID: 1, Msg: []byte("{}")}
+	for _, msgs := range [][]sdk.Msg{{updateAdmin}, {migrate}, {store, migrate}} {
+		_, err := neutronApp.GovKeeper.SubmitProposal(ctx, msgs, "", "denied", "not allowed", proposer, false)
+		require.ErrorIs(t, err, govfilter.ErrOnlySoftwareUpgradeProposals)
 	}
 }
