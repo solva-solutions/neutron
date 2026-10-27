@@ -5,6 +5,7 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	upgradetypes "cosmossdk.io/x/upgrade/types"
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -20,7 +21,7 @@ import (
 var ErrOnlySoftwareUpgradeProposals = errorsmod.Register(
 	"neutron-gov",
 	1,
-	"only software upgrade and text proposals are allowed",
+	"only software upgrade, wasm store code and text proposals are allowed",
 )
 
 // IsSoftwareUpgradeMsg reports whether msg is MsgSoftwareUpgrade.
@@ -33,6 +34,19 @@ func IsSoftwareUpgradeMsg(msg sdk.Msg) bool {
 // IsSoftwareUpgradeTypeURL reports whether typeURL is MsgSoftwareUpgrade.
 func IsSoftwareUpgradeTypeURL(typeURL string) bool {
 	return typeURL == sdk.MsgTypeURL(&upgradetypes.MsgSoftwareUpgrade{})
+}
+
+// isStoreCodeMsg reports whether msg is a wasm MsgStoreCode. With code upload
+// restricted by the wasm params, governance is the only sender that can store code.
+// Instantiate, migrate and admin messages stay blocked.
+func isStoreCodeMsg(msg sdk.Msg) bool {
+	_, ok := msg.(*wasmtypes.MsgStoreCode)
+	return ok
+}
+
+// isUpgradeOrStoreCodeMsg reports whether msg is a software upgrade or a wasm store code message.
+func isUpgradeOrStoreCodeMsg(msg sdk.Msg) bool {
+	return IsSoftwareUpgradeMsg(msg) || isStoreCodeMsg(msg)
 }
 
 // isTextProposalMsg reports whether msg is a legacy text proposal wrapped in
@@ -51,10 +65,11 @@ func isTextProposalMsg(msg sdk.Msg) bool {
 
 // allowedByRouter reports whether governance may route and execute msg.
 func allowedByRouter(msg sdk.Msg) bool {
-	return IsSoftwareUpgradeMsg(msg) || isTextProposalMsg(msg)
+	return isUpgradeOrStoreCodeMsg(msg) || isTextProposalMsg(msg)
 }
 
-// ValidateProposalMessages allows a software-upgrade proposal or a text proposal.
+// ValidateProposalMessages allows a proposal made of software upgrades and wasm
+// store code messages, or a text proposal.
 // A text proposal has no messages, or only legacy text messages. Mixing the two,
 // and every other message including MsgCancelUpgrade, is rejected.
 func ValidateProposalMessages(msgs []sdk.Msg) error {
@@ -63,7 +78,7 @@ func ValidateProposalMessages(msgs []sdk.Msg) error {
 	}
 	upgrades, texts := true, true
 	for _, msg := range msgs {
-		if !IsSoftwareUpgradeMsg(msg) {
+		if !isUpgradeOrStoreCodeMsg(msg) {
 			upgrades = false
 		}
 		if !isTextProposalMsg(msg) {
