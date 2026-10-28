@@ -13,7 +13,7 @@ require (
 	cosmossdk.io/store v1.1.2
 	cosmossdk.io/x/evidence v0.2.0
 	cosmossdk.io/x/feegrant v0.2.0
-	cosmossdk.io/x/tx v0.14.0
+	cosmossdk.io/x/tx v1.1.0
 	cosmossdk.io/x/upgrade v0.2.0
 	github.com/CosmWasm/wasmd v0.61.0
 	github.com/CosmWasm/wasmvm/v3 v3.0.8
